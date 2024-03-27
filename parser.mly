@@ -3,7 +3,7 @@
 %}
 
 %token INT
-%token PERIOD
+%token SEMICOLON
 %token COMMA
 %token ASSIGN
 %token LBRACK
@@ -49,39 +49,30 @@ comp_unit:
 | d = decl; c = comp_unit { (Decl d) :: c }
 | f = funcdef; c = comp_unit {(FuncDef f) :: c}
 
-functype:
-| VOID {Void}
-| INT {Int}
-
-btype:
-  INT {Btype}
-
 decl:
-  b = btype; v = vardef_list; COMMA {(b, v)}
+  INT; v = vardef_list; SEMICOLON {(Btype, v)}
 
 vardef_list:
-  l = separated_list(PERIOD, vardef) {l}
+  l = separated_list(COMMA, vardef) {l}
 
 vardef:
 | i = id; ASSIGN; init = init_val {Single (i, init)}
-| i = id; ASSIGN; init = init_val_list {Array (i, init)} 
+| i = id; dim = dimensions_list {Array (i, dim)} 
 
 init_val:
   e = exp {e}
 
-init_val_list:
-  l = list(bracket_int) {l}
-
 funcdef:
-| f = functype; i = id; LPARE; p = func_f_params; RPARE; b =  block {(f, i, p, b)}
+| INT; i = id; LPARE; p = func_f_params; RPARE; b =  block {(Int, i, p, b)}
+| VOID; i = id; LPARE; p = func_f_params; RPARE; b =  block {(Void, i, p, b)}
 
 
 func_f_params:
-  l = separated_list(PERIOD, func_f_param) {l}
+  l = separated_list(COMMA, func_f_param) {l}
 
 func_f_param:
-| b = btype; i = id; {Sin (b,i)}
-| b = btype; i = id; LBRACK; RBRACK; l = dimensions_list{Arr (b, i, l)}
+| INT; i = id; {Sin (Btype,i)}
+| INT; i = id; LBRACK; RBRACK; l = dimensions_list{Arr (Btype, i, l)}
 
 dimensions_list:
   l = list(bracket_int) {l}
@@ -98,16 +89,16 @@ block_list:
 | s = stmt; l = block_list { (Stmt s) :: l}
 
 stmt:
-| l = lval; ASSIGN; e = exp; COMMA {Assign (l, e)}
-| e = exp; COMMA {Expr e}
+| l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
+| e = exp; SEMICOLON {Expr e}
 | b = block {Block b}
 | IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt  {If (e, s1, Some s2)}
 | IF; LPARE; e = exp; RPARE; s =stmt; {If (e, s, None)}
 | WHILE; LPARE; e = exp; RPARE; s = stmt {While (e, s)}
-| BREAK; COMMA {Break}
-| CONTINUE; COMMA {Continue}
-| RETURN; e = exp; COMMA; {Return (Some e)}
-| RETURN; COMMA {Return None}
+| BREAK; SEMICOLON {Break}
+| CONTINUE; SEMICOLON {Continue}
+| RETURN; e = exp; SEMICOLON; {Return (Some e)}
+| RETURN; SEMICOLON {Return None}
 
 exp:
  l = l_or_exp {l}
@@ -120,7 +111,7 @@ exp_list:
 | LBRACK; e = exp; RBRACK; l = exp_list {e :: l}
 
 primary_exp:
-| LBRACE; e = exp; RBRACE; {Exp e}
+| LPARE; e = exp; RPARE; {Exp e}
 | l = lval {Lval l}
 | n = number {Number n}
 
@@ -129,7 +120,7 @@ number:
  
 unary_exp:
 | p = primary_exp {Primary p}
-| i = id; LBRACE; f = func_r_params; RBRACE; {Call (i, f)}
+| i = id; LPARE; f = func_r_params; RPARE; {Call (i, f)}
 | u = unary_op; ue = unary_exp; {UnaryOp (u, ue)}
  
 unary_op:
@@ -138,7 +129,7 @@ unary_op:
 | NOT_ {NOT}
 
 func_r_params:
- l = separated_list(PERIOD, exp) {l}
+ l = separated_list(COMMA, exp) {l}
  
 mul_exp:
 | u = unary_exp {UnaryExp u}

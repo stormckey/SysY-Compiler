@@ -1,5 +1,4 @@
 open Core;;
-
 type id = string
 [@@deriving sexp]
 
@@ -26,10 +25,10 @@ and var_def =
 and init_val = exp
 [@@deriving sexp]
 
-and func_def = func_and * id * func_f_params * block
+and func_def = func_type * id * func_f_params * block
 [@@deriving sexp]
 
-and func_and = 
+and func_type = 
     | Void
     | Int
 [@@deriving sexp]

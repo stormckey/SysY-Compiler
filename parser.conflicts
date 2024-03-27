@@ -1,0 +1,30 @@
+
+** Conflict (shift/reduce) in state 93.
+** Token involved: ELSE
+** This state is reached from source after reading:
+
+VOID id LPARE func_f_params RPARE LBRACE IF LPARE exp RPARE IF LPARE exp RPARE stmt
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+source 
+comp_unit EOF 
+funcdef comp_unit 
+VOID id LPARE func_f_params RPARE block 
+                                  LBRACE block_list RBRACE 
+                                         stmt block_list 
+                                         (?)
+
+** In state 93, looking ahead at ELSE, shifting is permitted
+** because of the following sub-derivation:
+
+IF LPARE exp RPARE stmt ELSE stmt 
+                   IF LPARE exp RPARE stmt . ELSE stmt 
+
+** In state 93, looking ahead at ELSE, reducing production
+** stmt -> IF LPARE exp RPARE stmt
+** is permitted because of the following sub-derivation:
+
+IF LPARE exp RPARE stmt ELSE stmt // lookahead token appears
+                   IF LPARE exp RPARE stmt . 

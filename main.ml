@@ -3,11 +3,22 @@ open Core
 open Lexer
 open Lexing
 
+
+
 let run filename = 
   let input = In_channel.create filename in
   let filebuf = Lexing.from_channel input in
-  let s = Parser.source Lexer.read filebuf in
-  print_endline (Sexp.to_string_hum (sexp_of_comp_unit s))
+  match try(Ok(Parser.source  Lexer.read filebuf)) with
+    | _ -> (
+      let start_pos = Lexing.lexeme_start_p filebuf in
+      let end_pos = Lexing.lexeme_end_p filebuf in
+      Error (
+        Printf.sprintf "Parse error: line %d, characters %d-%d"
+          start_pos.pos_lnum
+          (start_pos.pos_cnum - start_pos.pos_bol)
+          (end_pos.pos_cnum - end_pos.pos_bol))) with 
+  | Ok c ->  print_endline (Sexp.to_string_hum (sexp_of_comp_unit c))
+  | Error e -> print_endline e; exit (1)
 
 let main () =
   let open Command.Let_syntax in
@@ -19,5 +30,5 @@ let main () =
     fun () -> run filename]
   |> Command.run
   
-let () = main ()
+let () = main () ;;
 

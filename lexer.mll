@@ -7,17 +7,19 @@
 let digit = ['0'-'9']
 let int = digit digit*
 let white = [' ' '\t']
-let newline = '\r' | '\n' | "\r\n"
-let comment = "//" _* newline 
+let newline = '\n' 
+let comment1 = "//" [^ '\n']*
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule read = parse
 | white {read lexbuf}
-| comment {new_line lexbuf; read lexbuf}
-| '1' {INT_CONST (int_of_string (Lexing.lexeme lexbuf))}
+| newline {new_line lexbuf; read lexbuf}
+| comment1 {read lexbuf}
+| "/*" {comment lexbuf}
+| int {INT_CONST (int_of_string (Lexing.lexeme lexbuf))}
 | "int" {INT}
-| "," {PERIOD}
-| ";" {COMMA}
+| "," {COMMA}
+| ";" {SEMICOLON}
 | "=" {ASSIGN}
 | "(" {LPARE}
 | ")" {RPARE}
@@ -50,4 +52,6 @@ rule read = parse
 | eof {EOF}
 | _ {failwith "unknown string to lex"}
 
-
+and comment = parse
+| "*/" {read lexbuf}
+| _ {comment lexbuf}
