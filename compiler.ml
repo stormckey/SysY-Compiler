@@ -1,7 +1,5 @@
 open Ast
 open Core
-open Lexer
-open Lexing
 
 
 
@@ -25,10 +23,10 @@ let main () =
   Command.basic
     ~summary:"simple interpreter"
     [%map_open
-      let filename = anon (maybe_with_default "test.lam" ("filename" %: string))
+      let filename = anon (maybe_with_default "test.sy" ("filename" %: string))
     in 
     fun () -> run filename]
-  |> Command.run
+  |> Command_unix.run
   
 let () = main () ;;
 
