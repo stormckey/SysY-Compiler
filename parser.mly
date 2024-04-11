@@ -37,6 +37,9 @@
 %token OR_
 %token EOF
 
+%nonassoc THEN
+%nonassoc ELSE
+
 %start <comp_unit> source
 
 %%
@@ -92,8 +95,8 @@ stmt:
 | l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
 | e = exp; SEMICOLON {Expr e}
 | b = block {Block b}
-| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt  {If (e, s1, Some s2)}
-| IF; LPARE; e = exp; RPARE; s =stmt; {If (e, s, None)}
+| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt {If (e, s1, Some s2)} 
+| IF; LPARE; e = exp; RPARE; s =stmt; {If (e, s, None)}  %prec THEN
 | WHILE; LPARE; e = exp; RPARE; s = stmt {While (e, s)}
 | BREAK; SEMICOLON {Break}
 | CONTINUE; SEMICOLON {Continue}

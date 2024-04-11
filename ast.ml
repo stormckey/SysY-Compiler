@@ -2,7 +2,6 @@ open Core
 
 type id = string [@@deriving sexp]
 type int_const = int [@@deriving sexp]
-type variable = string [@@deriving sexp]
 type btype = Btype [@@deriving sexp]
 
 type decl = btype * var_def list [@@deriving sexp]

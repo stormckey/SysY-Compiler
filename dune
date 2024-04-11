@@ -1,4 +1,4 @@
-(menhir 
+(menhir
  (modules parser))
 
 (ocamllex lexer)
@@ -6,4 +6,5 @@
 (executable
  (name compiler)
  (libraries core core_unix.command_unix)
- (preprocess (pps ppx_jane)))
+ (preprocess
+  (pps ppx_jane)))
