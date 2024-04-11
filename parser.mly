@@ -21,20 +21,20 @@
 %token BREAK
 %token CONTINUE
 %token RETURN
-%token NOT_
-%token MUL_
-%token DIV_
-%token REM_
-%token ADD_
-%token SUB_
-%token LT_
-%token GT_
-%token LE_
-%token GE_
-%token EQ_
-%token NEQ_
-%token AND_
-%token OR_
+%token NOT
+%token MUL
+%token DIV
+%token REM
+%token ADD
+%token SUB
+%token LT
+%token GT
+%token LE
+%token GE
+%token EQ
+%token NEQ
+%token AND
+%token OR
 %token EOF
 
 %nonassoc THEN
@@ -49,7 +49,7 @@ source:
 
 comp_unit:
 | (* empty *) { [] }
-| d = decl; c = comp_unit { (Decl d) :: c }
+| d = decl; c = comp_unit { (DeclGlobal d) :: c }
 | f = funcdef; c = comp_unit {(FuncDef f) :: c}
 
 decl:
@@ -59,8 +59,9 @@ vardef_list:
   l = separated_list(COMMA, vardef) {l}
 
 vardef:
-| i = id; ASSIGN; init = init_val {Single (i, init)}
-| i = id; dim = dimensions_list {Array (i, dim)} 
+| i = id; ASSIGN; init = init_val {DefVar (i, init)}
+| i = id; dim = dimensions_list {DefArr
+ (i, dim)} 
 
 init_val:
   e = exp {e}
@@ -74,8 +75,8 @@ func_f_params:
   l = separated_list(COMMA, func_f_param) {l}
 
 func_f_param:
-| INT; i = id; {Sin (Btype,i)}
-| INT; i = id; LBRACK; RBRACK; l = dimensions_list{Arr (Btype, i, l)}
+| INT; i = id; {IntParam (Btype,i)}
+| INT; i = id; LBRACK; RBRACK; l = dimensions_list{ArrParam (Btype, i, l)}
 
 dimensions_list:
   l = list(bracket_int) {l}
@@ -88,7 +89,7 @@ block:
 
 block_list:
 | (* empty *) {[ ]}
-| d = decl; l = block_list { (Decl_ d) :: l}
+| d = decl; l = block_list { (DeclLocal d) :: l}
 | s = stmt; l = block_list { (Stmt s) :: l}
 
 stmt:
@@ -122,54 +123,54 @@ number:
  n = INT_CONST { n }
  
 unary_exp:
-| p = primary_exp {Primary p}
+| p = primary_exp {UnaryPrimary p}
 | i = id; LPARE; f = func_r_params; RPARE; {Call (i, f)}
 | u = unary_op; ue = unary_exp; {UnaryOp (u, ue)}
  
 unary_op:
-| ADD_ {POS}
-| SUB_ {NEG}
-| NOT_ {NOT}
+| ADD {Pos}
+| SUB {Neg}
+| NOT {Not}
 
 func_r_params:
  l = separated_list(COMMA, exp) {l}
  
 mul_exp:
-| u = unary_exp {UnaryExp u}
-| m = mul_exp; b = binop; u = unary_exp {MulExp (m, b, u)}
+| u = unary_exp {MulUnary u}
+| m = mul_exp; b = binop; u = unary_exp {MulMul (m, b, u)}
 
 binop:
-| DIV_ {DIV}
-| MUL_ {MUL}
-| REM_ {REM}
+| DIV {Div}
+| MUL {Mul}
+| REM {Rem}
 
 add_exp:
-| m = mul_exp {Mul m}
-| a = add_exp; ADD_; m = mul_exp {Add (a, m)}
-| a = add_exp; SUB_; m = mul_exp {Sub (a, m)}
+| m = mul_exp {AddMul m}
+| a = add_exp; ADD; m = mul_exp {AddAdd (a, m)}
+| a = add_exp; SUB; m = mul_exp {AddSub (a, m)}
 
 rel_exp:
-| a = add_exp {ADD a}
-| r = rel_exp; op = relop; a = add_exp {REL (r, op, a)}
+| a = add_exp {RelAdd a}
+| r = rel_exp; op = relop; a = add_exp {RelRel (r, op, a)}
 
 relop:
-| LT_ {LT}
-| GT_ {GT}
-| LE_ {LE}
-| GE_ {GE}
+| LT {Lt}
+| GT {Gt}
+| LE {Le}
+| GE {Ge}
 
 eq_exp:
-| r = rel_exp {Rel r}
-| e = eq_exp; EQ_; r = rel_exp {Eq (e, r)}
-| e = eq_exp; NEQ_; r = rel_exp {Neq (e, r)}
+| r = rel_exp {EqRel r}
+| e = eq_exp; EQ; r = rel_exp {EqEq (e, r)}
+| e = eq_exp; NEQ; r = rel_exp {EqNeq (e, r)}
 
 l_and_exp:
-| e = eq_exp {EQ e}
-| l = l_and_exp; AND_; e = eq_exp {AND (l,e)}
+| e = eq_exp {AndEq e}
+| l = l_and_exp; AND; e = eq_exp {AndAnd (l,e)}
 
 l_or_exp:
-| a = l_and_exp {And a}
-| o = l_or_exp; OR_; a = l_and_exp {Or (o, a)}
+| a = l_and_exp {OrAnd a}
+| o = l_or_exp; OR; a = l_and_exp {OrOr (o, a)}
 
 id:
     s = ID {s}

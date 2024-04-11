@@ -35,20 +35,20 @@ rule read = parse
 | "continue" {CONTINUE}
 | "return" {RETURN}
 | id {ID (Lexing.lexeme lexbuf)}
-| '!' {NOT_}
-| '*' {MUL_}
-| '/' {DIV_}
-| '%' {REM_}
-| '+' {ADD_}
-| '-' {SUB_}
-| '<' {LT_}
-| '>' {GT_}
-| ">=" {GE_}
-| "<=" {LE_}
-| "==" {EQ_}
-| "!=" {NEQ_}
-| "&&" {AND_}
-| "||" {OR_}
+| '!' {NOT}
+| '*' {MUL}
+| '/' {DIV}
+| '%' {REM}
+| '+' {ADD}
+| '-' {SUB}
+| '<' {LT}
+| '>' {GT}
+| ">=" {GE}
+| "<=" {LE}
+| "==" {EQ}
+| "!=" {NEQ}
+| "&&" {AND}
+| "||" {OR}
 | eof {EOF}
 | _ {failwith "unknown string to lex"}
 
