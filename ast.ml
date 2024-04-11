@@ -44,10 +44,10 @@ and number = int_const [@@deriving sexp]
 and unary_exp =
   | UnaryPrimary of primary_exp
   | Call of id * func_r_params
-  | UnaryOp of unary_op * unary_exp
+  | UnaryOp of unaryop * unary_exp
 [@@deriving sexp]
 
-and unary_op = Pos | Neg | Not [@@deriving sexp]
+and unaryop = Pos | Neg | Not [@@deriving sexp]
 and func_r_params = exp list [@@deriving sexp]
 
 and mul_exp = MulUnary of unary_exp | MulMul of mul_exp * binop * unary_exp
