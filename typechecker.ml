@@ -20,6 +20,7 @@ let check_type_error expected actual convert exp =
 let id_not_found_error id = failwith (sp "id:%s not defined" id)
 let ( == ) a b = equal_value_type a b
 let ( != ) a b = not (a == b)
+let ( === ) a b = if a != b then failwith (make_type_mismatch a b)
 let list_empty l = List.length l = 0
 let list_nonempty l = not (list_empty l)
 
@@ -44,9 +45,9 @@ let lookup (ctx : ctx) (name : string) : value_type option =
   in
   traverse ctx name
 
-let rec check_primary_exp ctxes exp expected =
+let rec typecheck_primary_exp ctxes exp =
   match exp with
-  | Exp e -> check_exp ctxes e expected
+  | Exp e -> typecheck_exp ctxes e
   | Lval (name, exp_list) -> (
       match lookup (snd ctxes) name with
       | None -> id_not_found_error name
@@ -54,21 +55,15 @@ let rec check_primary_exp ctxes exp expected =
           match ty with
           | IntType ->
               if list_nonempty exp_list then
-                failwith (sp "try to treat %s:int as array" name)
-          | ArrayType ->
-              if list_empty exp_list then (
-                if expected != ArrayType then
-                  failwith "try to assign an array to non-array")
-              else if expected != IntType then
-                failwith "try to assign an int to non-int"
+                failwith (sp "try to treat %s:int as array" name);
+              IntType
+          | ArrayType -> if list_empty exp_list then ArrayType else IntType
           | _ -> failwith "the lval must be of either int or array"))
-  | Number _ ->
-      if expected != IntType then
-        check_type_error expected IntType sexp_of_primary_exp exp
+  | Number _ -> IntType
 
-and check_unary_exp ctxes exp expected =
+and typecheck_unary_exp ctxes exp =
   match exp with
-  | UnaryPrimary primary_exp -> check_primary_exp ctxes primary_exp expected
+  | UnaryPrimary primary_exp -> typecheck_primary_exp ctxes primary_exp
   | Call (name, func_r_params) -> (
       match lookup (fst ctxes) name with
       | None -> failwith (sp "function:%s is not defined" name)
@@ -76,73 +71,61 @@ and check_unary_exp ctxes exp expected =
           match ty with
           | FuncType (return_type, args) ->
               zip args func_r_params
-              |> List.iter ~f:(fun (arg, para) -> check_exp ctxes para arg);
-              if return_type != expected then
-                failwith
-                  (sp "the return type of function: %s is different from %s"
-                     name (ty_to_string expected))
+              |> List.iter ~f:(fun (arg, para) ->
+                     typecheck_exp ctxes para === arg);
+              return_type
           | _ -> failwith (sp "try to call on non-function: %s" name)))
   | UnaryOp (_, unary_exp) ->
-      if expected == IntType then check_unary_exp ctxes unary_exp IntType
-      else check_type_error expected IntType sexp_of_unary_exp exp
+      typecheck_unary_exp ctxes unary_exp === IntType;
+      IntType
 
-and check_mul_exp ctxes exp expected =
+and typecheck_mul_exp ctxes exp =
   match exp with
-  | MulUnary unary_exp -> check_unary_exp ctxes unary_exp expected
+  | MulUnary unary_exp -> typecheck_unary_exp ctxes unary_exp
   | MulMul (mul_exp, _, unary_exp) ->
-      if expected == IntType then (
-        check_mul_exp ctxes mul_exp IntType;
-        check_unary_exp ctxes unary_exp IntType)
-      else check_type_error expected BoolType sexp_of_mul_exp exp
+      typecheck_mul_exp ctxes mul_exp === IntType;
+      typecheck_unary_exp ctxes unary_exp === IntType;
+      IntType
 
-and check_add_exp ctxes exp expected =
+and typecheck_add_exp ctxes exp =
   match exp with
-  | AddMul mul_exp -> check_mul_exp ctxes mul_exp expected
+  | AddMul mul_exp -> typecheck_mul_exp ctxes mul_exp
   | AddAdd (add_exp, mul_exp) | AddSub (add_exp, mul_exp) ->
-      if expected == IntType then (
-        check_add_exp ctxes add_exp IntType;
-        check_mul_exp ctxes mul_exp IntType)
-      else check_type_error expected BoolType sexp_of_add_exp exp
+      typecheck_add_exp ctxes add_exp === IntType;
+      typecheck_mul_exp ctxes mul_exp === IntType;
+      IntType
 
-and check_rel_exp ctxes exp expected =
+and typecheck_rel_exp ctxes exp =
   match exp with
-  | RelAdd add_exp -> check_add_exp ctxes add_exp expected
+  | RelAdd add_exp -> typecheck_add_exp ctxes add_exp
   | RelRel (rel_exp, _, add_exp) ->
-      if expected == BoolType then (
-        check_add_exp ctxes add_exp IntType;
-        check_rel_exp ctxes rel_exp IntType)
-      else check_type_error expected BoolType sexp_of_rel_exp exp
+      typecheck_add_exp ctxes add_exp === IntType;
+      typecheck_rel_exp ctxes rel_exp === IntType;
+      IntType
 
-and check_eq_exp ctxes exp expected =
+and typecheck_eq_exp ctxes exp =
   match exp with
-  | EqRel rel_exp -> check_rel_exp ctxes rel_exp expected
+  | EqRel rel_exp -> typecheck_rel_exp ctxes rel_exp
   | EqEq (eq_exp, rel_exp) | EqNeq (eq_exp, rel_exp) ->
-      if expected == BoolType then (
-        check_eq_exp ctxes eq_exp BoolType;
-        check_rel_exp ctxes rel_exp BoolType)
-      else check_type_error expected BoolType sexp_of_eq_exp exp
+      typecheck_eq_exp ctxes eq_exp === BoolType;
+      typecheck_rel_exp ctxes rel_exp === BoolType;
+      BoolType
 
-and check_l_and_exp ctxes exp expected =
+and typecheck_l_and_exp ctxes exp =
   match exp with
-  | AndEq andeq -> check_eq_exp ctxes andeq expected
+  | AndEq andeq -> typecheck_eq_exp ctxes andeq
   | AndAnd (l_and_exp, eq_exp) ->
-      if expected == BoolType then (
-        check_l_and_exp ctxes l_and_exp BoolType;
-        check_eq_exp ctxes eq_exp BoolType)
-      else check_type_error expected BoolType sexp_of_l_and_exp exp
+      typecheck_l_and_exp ctxes l_and_exp === BoolType;
+      typecheck_eq_exp ctxes eq_exp === BoolType;
+      BoolType
 
-and check_exp ctxes exp expected =
+and typecheck_exp ctxes exp =
   match exp with
-  | OrAnd orand -> check_l_and_exp ctxes orand expected
+  | OrAnd orand -> typecheck_l_and_exp ctxes orand
   | OrOr (l_or_exp, l_and_exp) ->
-      if expected == BoolType then (
-        check_l_and_exp ctxes l_and_exp BoolType;
-        check_exp ctxes l_or_exp BoolType)
-      else check_type_error expected BoolType sexp_of_exp exp
-
-let push_new_var_ctx ctxes = (fst ctxes, Map.Poly.empty :: snd ctxes)
-
-type which = Fun | Var
+      typecheck_l_and_exp ctxes l_and_exp === BoolType;
+      typecheck_exp ctxes l_or_exp === BoolType;
+      BoolType
 
 let update_table_exn table name ty =
   match Map.Poly.find table name with
@@ -154,6 +137,8 @@ let update_ctx (ctx : ctx) (name : string) (ty : value_type) : ctx =
   | [] -> failwith "empty ctx can't be updated"
   | hd :: tl -> update_table_exn hd name ty :: tl
 
+type which = Fun | Var
+
 let update_ctxes which ctxes name ty =
   match which with
   | Fun -> (update_ctx (fst ctxes) name ty, snd ctxes)
@@ -162,7 +147,7 @@ let update_ctxes which ctxes name ty =
 let update_var_def ctxes var_def =
   match var_def with
   | DefVar (id, exp) ->
-      check_exp ctxes exp IntType;
+      typecheck_exp ctxes exp === IntType;
       update_ctxes Var ctxes id IntType
   | DefArr (id, _) -> update_ctxes Var ctxes id ArrayType
 
@@ -181,6 +166,7 @@ let update_ctx_list ctxes update l =
   List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
 
 let update_decl ctxes decl = update_ctx_list ctxes update_var_def decl
+let push_new_var_ctx ctxes = (fst ctxes, Map.Poly.empty :: snd ctxes)
 
 let update_block_item ctxes block_item =
   let ctxes = push_new_var_ctx ctxes in
