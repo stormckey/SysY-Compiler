@@ -21,20 +21,18 @@ let runtime =
 let parse_to_ast_exn inputbuf =
   try
     let ast = Parser.source Lexer.read inputbuf in
-    (* Ast.sexp_of_comp_unit ast |> Sexp.to_string_hum |> print_endline; *)
-    PrintBox_text.output stdout (Tree.tree_of_comp_unit ast);
+    Tree.tree_of_comp_unit ast |> PrintBox_text.output stdout;
     ast
   with _ ->
     make_parse_error_msg inputbuf |> print_endline;
     exit 1
 
-(* let init_ctx = ([ Map.Poly.empty ], [ Map.Poly.empty ]) *)
+let init_ctx = ([ Map.Poly.empty ], [ Map.Poly.empty ])
 
 let run filename =
-  ignore
-    (runtime ^ In_channel.read_all filename
-    |> Lexing.from_string |> parse_to_ast_exn)
-(* |> Typechecker.typecheck init_ctx *)
+  runtime ^ In_channel.read_all filename
+  |> Lexing.from_string |> parse_to_ast_exn
+  |> Typechecker.typecheck init_ctx
 
 let main () =
   Command.basic ~summary:"simple compiler for SysY"
