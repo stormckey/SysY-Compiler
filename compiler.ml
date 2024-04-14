@@ -8,15 +8,20 @@ let make_parse_error_msg filebuf =
   Printf.sprintf "Parse error: line %d, characters %d-%d" start_pos.pos_lnum
     start_char end_char
 
+let parse_to_ast_exn filebuf =
+  try
+    Parser.source Lexer.read filebuf
+    (* |> Ast.sexp_of_comp_unit |> Sexp.to_string_hum |> print_endline *)
+  with _ ->
+    make_parse_error_msg filebuf |> print_endline;
+    exit 1
+
+let init_ctx = ([ Map.Poly.empty ], [ Map.Poly.empty ])
+
 let run filename =
   In_channel.with_file filename ~f:(fun file ->
-      let filebuf = Lexing.from_channel file in
-      try
-        Parser.source Lexer.read filebuf
-        |> Ast.sexp_of_comp_unit |> Sexp.to_string_hum |> print_endline
-      with _ ->
-        make_parse_error_msg filebuf |> print_endline;
-        exit 1)
+      Lexing.from_channel file |> parse_to_ast_exn
+      |> Typechecker.typecheck init_ctx)
 
 let main () =
   Command.basic ~summary:"simple compiler for SysY"

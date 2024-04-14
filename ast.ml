@@ -80,3 +80,11 @@ and l_or_exp = OrAnd of l_and_exp | OrOr of l_or_exp * l_and_exp
 
 and either_decl_funcdef = DeclGlobal of decl | FuncDef of func_def
 [@@deriving sexp]
+
+type value_type =
+  | IntType
+  | VoidType
+  | ArrayType
+  | BoolType
+  | FuncType of value_type * value_type list
+[@@deriving sexp, equal]

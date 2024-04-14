@@ -2,3 +2,4 @@
 
 (using menhir 2.0)
 
+(map_workspace_root false)

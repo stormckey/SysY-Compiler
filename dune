@@ -5,6 +5,7 @@
 
 (executable
  (name compiler)
+ (modes byte exe)
  (libraries core core_unix.command_unix)
  (preprocess
   (pps ppx_jane)))
