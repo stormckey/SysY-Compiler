@@ -1,8 +1,17 @@
-//test add
-int main(){
-    int a, b;
-    a = 10;
-    b = -1;
-    putint(a+b);
-    return 0;
+// Use complex expression in if structure
+int a[1][2];
+int main() {
+  int a = 5;
+  int b = 5;
+  int c = 1;
+  int d = -2;
+  int result = 0;
+  if ((d * 1 / 2) < 0 || (a - b) != 0 && (c + 3) % 2 != 0) {
+    putint(result);
+  }
+  if ((d % 2 + 67) < 0 || (a - b) != 0 && (c + 2) % 2 != 0) {
+    result = 4;
+    putint(result);
+  }
+  return 0;
 }

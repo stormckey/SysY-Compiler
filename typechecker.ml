@@ -13,7 +13,7 @@ let make_type_mismatch ty1 ty2 =
   sp "Type mismatch, expect %s but get %s:" (ty_to_string ty1)
     (ty_to_string ty2)
 
-let id_not_found_error id = failwith (sp "id:%s not defined" id)
+let id_not_found_error id = failwith (sp "id:%s is not defined" id)
 let ( == ) a b = equal_value_type a b
 let ( != ) a b = not (a == b)
 
@@ -79,9 +79,8 @@ and typecheck_unary_exp ctxes exp =
               return_type
           | _ -> failwith (sp "try to call on non-function: %s" name)))
   | UnaryOp (_, unary_exp) ->
-      check_type_mismatch
+      check_type_mismatch IntType
         (typecheck_unary_exp ctxes unary_exp)
-        IntType
         (sexp_of_unary_exp unary_exp);
       IntType
 
@@ -89,12 +88,11 @@ and typecheck_mul_exp ctxes exp =
   match exp with
   | MulUnary unary_exp -> typecheck_unary_exp ctxes unary_exp
   | MulMul (mul_exp, _, unary_exp) ->
-      check_type_mismatch
+      check_type_mismatch IntType
         (typecheck_mul_exp ctxes mul_exp)
-        IntType (sexp_of_mul_exp mul_exp);
-      check_type_mismatch
+        (sexp_of_mul_exp mul_exp);
+      check_type_mismatch IntType
         (typecheck_unary_exp ctxes unary_exp)
-        IntType
         (sexp_of_unary_exp unary_exp);
       IntType
 
@@ -102,62 +100,59 @@ and typecheck_add_exp ctxes exp =
   match exp with
   | AddMul mul_exp -> typecheck_mul_exp ctxes mul_exp
   | AddAdd (add_exp, mul_exp) | AddSub (add_exp, mul_exp) ->
-      check_type_mismatch
+      check_type_mismatch IntType
         (typecheck_add_exp ctxes add_exp)
-        IntType (sexp_of_add_exp add_exp);
-      check_type_mismatch
+        (sexp_of_add_exp add_exp);
+      check_type_mismatch IntType
         (typecheck_mul_exp ctxes mul_exp)
-        IntType (sexp_of_mul_exp mul_exp);
+        (sexp_of_mul_exp mul_exp);
       IntType
 
 and typecheck_rel_exp ctxes exp =
   match exp with
   | RelAdd add_exp -> typecheck_add_exp ctxes add_exp
   | RelRel (rel_exp, _, add_exp) ->
-      check_type_mismatch
+      check_type_mismatch IntType
         (typecheck_add_exp ctxes add_exp)
-        IntType (sexp_of_add_exp add_exp);
-      check_type_mismatch
+        (sexp_of_add_exp add_exp);
+      check_type_mismatch IntType
         (typecheck_rel_exp ctxes rel_exp)
-        IntType (sexp_of_rel_exp rel_exp);
+        (sexp_of_rel_exp rel_exp);
       IntType
 
 and typecheck_eq_exp ctxes exp =
   match exp with
   | EqRel rel_exp -> typecheck_rel_exp ctxes rel_exp
   | EqEq (eq_exp, rel_exp) | EqNeq (eq_exp, rel_exp) ->
-      check_type_mismatch
+      check_type_mismatch IntType
         (typecheck_eq_exp ctxes eq_exp)
-        BoolType (sexp_of_eq_exp eq_exp);
-      check_type_mismatch
+        (sexp_of_eq_exp eq_exp);
+      check_type_mismatch IntType
         (typecheck_rel_exp ctxes rel_exp)
-        BoolType (sexp_of_rel_exp rel_exp);
+        (sexp_of_rel_exp rel_exp);
       BoolType
 
 and typecheck_l_and_exp ctxes exp =
   match exp with
   | AndEq andeq -> typecheck_eq_exp ctxes andeq
   | AndAnd (l_and_exp, eq_exp) ->
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_l_and_exp ctxes l_and_exp)
-        BoolType
         (sexp_of_l_and_exp l_and_exp);
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_eq_exp ctxes eq_exp)
-        BoolType (sexp_of_eq_exp eq_exp);
+        (sexp_of_eq_exp eq_exp);
       BoolType
 
 and typecheck_exp ctxes exp =
   match exp with
   | OrAnd orand -> typecheck_l_and_exp ctxes orand
   | OrOr (l_or_exp, l_and_exp) ->
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_l_and_exp ctxes l_and_exp)
-        BoolType
         (sexp_of_l_and_exp l_and_exp);
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_exp ctxes l_or_exp)
-        BoolType
         (sexp_of_l_or_exp l_or_exp);
       BoolType
 
@@ -181,18 +176,20 @@ let update_ctxes which ctxes name ty =
 let update_var_def ctxes var_def =
   match var_def with
   | DefVar (id, exp) ->
-      check_type_mismatch (typecheck_exp ctxes exp) IntType (sexp_of_exp exp);
+      check_type_mismatch IntType (typecheck_exp ctxes exp) (sexp_of_exp exp);
       update_ctxes Var ctxes id IntType
+  | DefArr (id, []) -> update_ctxes Var ctxes id IntType
   | DefArr (id, _) -> update_ctxes Var ctxes id ArrayType
 
 let update_ctx_list ctxes update l =
   List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
 
 let update_decl ctxes decl = update_ctx_list ctxes update_var_def decl
-let push_new_var_ctx ctxes = (fst ctxes, Map.Poly.empty :: snd ctxes)
+
+let push_new_var_ctx ctxes init =
+  (fst ctxes, Map.Poly.of_alist_exn init :: snd ctxes)
 
 let rec update_block_item expected ctxes block_item =
-  let ctxes = push_new_var_ctx ctxes in
   match block_item with
   | DeclLocal (_, decl) -> update_decl ctxes decl
   | Stmt stmt ->
@@ -210,19 +207,19 @@ and check_stmt ctxes stmt expected =
         (typecheck_exp ctxes exp) (sexp_of_stmt stmt)
   | Expr exp -> ignore (typecheck_exp ctxes exp)
   | Block block ->
-      ignore ((push_new_var_ctx ctxes |> check_block) block expected)
+      ignore ((push_new_var_ctx ctxes [] |> check_block) block expected)
   | If (guard, then_, else_maybe) -> (
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_exp ctxes guard)
-        BoolType (sexp_of_exp guard);
+        (sexp_of_exp guard);
       check_stmt ctxes then_ expected;
       match else_maybe with
       | Some else_ -> check_stmt ctxes else_ expected
       | None -> ())
   | While (guard, stmt) ->
-      check_type_mismatch
+      check_type_mismatch BoolType
         (typecheck_exp ctxes guard)
-        BoolType (sexp_of_exp guard);
+        (sexp_of_exp guard);
       check_stmt ctxes stmt expected
   | Break -> ()
   | Continue -> ()
@@ -230,10 +227,15 @@ and check_stmt ctxes stmt expected =
       match exp with
       | None -> ()
       | Some exp ->
-          check_type_mismatch (typecheck_exp ctxes exp) expected
+          check_type_mismatch expected (typecheck_exp ctxes exp)
             (sexp_of_exp exp))
 
 let update_func_def ctxes (return_type, name, func_f_params, block) =
+  let new_vars =
+    List.map func_f_params ~f:(function
+      | IntParam (_, id) -> (id, IntType)
+      | ArrParam (_, id, _) -> (id, ArrayType))
+  in
   let param_types =
     List.map func_f_params ~f:(function
       | IntParam _ -> IntType
@@ -242,9 +244,11 @@ let update_func_def ctxes (return_type, name, func_f_params, block) =
   let return_type =
     match return_type with Void -> VoidType | Int -> IntType
   in
-  ignore (check_block ctxes block return_type);
   let func_type = FuncType (return_type, param_types) in
-  update_ctxes Fun ctxes name func_type
+  let ctxes = update_ctxes Fun ctxes name func_type in
+  let ctxes = push_new_var_ctx ctxes new_vars in
+  ignore (check_block ctxes block return_type);
+  ctxes
 
 let update_either_decl_funcdef ctxes either =
   match either with

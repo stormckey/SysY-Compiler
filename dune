@@ -6,6 +6,6 @@
 (executable
  (name compiler)
  (modes byte exe)
- (libraries core core_unix.command_unix)
+ (libraries core core_unix.command_unix printbox printbox-text)
  (preprocess
   (pps ppx_jane)))

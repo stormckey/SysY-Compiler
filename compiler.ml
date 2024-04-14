@@ -5,24 +5,36 @@ let make_parse_error_msg filebuf =
   let end_pos = Lexing.lexeme_end_p filebuf in
   let start_char = start_pos.pos_cnum - start_pos.pos_bol in
   let end_char = end_pos.pos_cnum - end_pos.pos_bol in
-  Printf.sprintf "Parse error: line %d, characters %d-%d" start_pos.pos_lnum
-    start_char end_char
+  Printf.sprintf "Parse error: line %d, characters %d-%d"
+    (start_pos.pos_lnum - 0) start_char end_char
 
-let parse_to_ast_exn filebuf =
+let runtime =
+  "int getint(){}\n\
+   int getch(){}\n\
+   int getarray(int a[]){}\n\
+   void putint(int num){}\n\
+   void putch(int ch){}\n\
+   void putarray(int n, int a[]){}\n\
+   void starttime(){}\n\
+   void stoptime(){}"
+
+let parse_to_ast_exn inputbuf =
   try
-    let ast = Parser.source Lexer.read filebuf in
-    Ast.sexp_of_comp_unit ast |> Sexp.to_string_hum |> print_endline;
+    let ast = Parser.source Lexer.read inputbuf in
+    (* Ast.sexp_of_comp_unit ast |> Sexp.to_string_hum |> print_endline; *)
+    PrintBox_text.output stdout (Tree.tree_of_comp_unit ast);
     ast
   with _ ->
-    make_parse_error_msg filebuf |> print_endline;
+    make_parse_error_msg inputbuf |> print_endline;
     exit 1
 
-let init_ctx = ([ Map.Poly.empty ], [ Map.Poly.empty ])
+(* let init_ctx = ([ Map.Poly.empty ], [ Map.Poly.empty ]) *)
 
 let run filename =
-  In_channel.with_file filename ~f:(fun file ->
-      Lexing.from_channel file |> parse_to_ast_exn
-      |> Typechecker.typecheck init_ctx)
+  ignore
+    (runtime ^ In_channel.read_all filename
+    |> Lexing.from_string |> parse_to_ast_exn)
+(* |> Typechecker.typecheck init_ctx *)
 
 let main () =
   Command.basic ~summary:"simple compiler for SysY"
