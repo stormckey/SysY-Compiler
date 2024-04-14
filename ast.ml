@@ -1,5 +1,3 @@
-open Core
-
 type id = string
 type int_const = int
 type btype = Btype
@@ -59,10 +57,3 @@ and eq_exp =
 and l_and_exp = AndEq of eq_exp | AndAnd of l_and_exp * eq_exp
 and l_or_exp = OrAnd of l_and_exp | OrOr of l_or_exp * l_and_exp
 and either_decl_funcdef = DeclGlobal of decl | FuncDef of func_def
-
-type value_type =
-  | IntType
-  | VoidType
-  | ArrayType of int list
-  | FuncType of value_type * value_type list
-[@@deriving sexp, equal]

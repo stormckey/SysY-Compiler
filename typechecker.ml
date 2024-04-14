@@ -1,57 +1,10 @@
 open Ast
 open Core
 open Tree
-
-type table = (string, value_type) Map.Poly.t
-type ctx = table list
-type ctxes = ctx * ctx (* func_ctx, var_ctx*)
-
-let sp = Printf.sprintf
-let pe = print_endline
-let ty_to_string ty = sexp_of_value_type ty |> Sexp.to_string_hum
-
-let make_type_mismatch ty1 ty2 =
-  sp "Type mismatch, expect %s but get %s" (ty_to_string ty1) (ty_to_string ty2)
-
-let id_not_found_error id = failwith (sp "id:%s is not defined" id)
-let ( == ) a b = equal_value_type a b
-let ( != ) a b = not (a == b)
-
-let check_type_mismatch ty1 ty2 tree1 tree2 =
-  if ty1 != ty2 then (
-    PrintBox_text.output stdout tree1;
-    print_endline "\n -------------------in--------------------";
-    PrintBox_text.output stdout tree2;
-    print_endline "";
-    failwith (make_type_mismatch ty1 ty2))
-
-let list_empty l = List.length l = 0
-let list_nonempty l = not (list_empty l)
-
-let zip l1 l2 =
-  let rec aux l1 l2 acc =
-    match (l1, l2) with
-    | [], [] -> List.rev acc
-    | h1 :: t1, h2 :: t2 -> aux t1 t2 ((h1, h2) :: acc)
-    | _, _ ->
-        failwith "the length of args is different from the length of params"
-  in
-  aux l1 l2 []
-
-let lookup (ctx : ctx) (name : string) : value_type option =
-  let rec traverse ctx name =
-    match ctx with
-    | [] -> None
-    | hd :: tl -> (
-        match Map.Poly.find hd name with
-        | None -> traverse tl name
-        | Some ty -> Some ty)
-  in
-  traverse ctx name
-
-let rec drop_head_n l n =
-  if n <= 0 then l
-  else match l with [] -> [] | _ :: tl -> drop_head_n tl (n - 1)
+open Table
+open Type
+open Err
+open Util
 
 let rec typecheck_lval ctxes (name, exp_list) =
   let self_tree = tree_of_lval (name, exp_list) in
