@@ -142,23 +142,6 @@ and typecheck_exp ctxes exp =
         (tree_of_exp l_or_exp) self_tree;
       IntType
 
-let update_table_exn table name ty =
-  match Map.Poly.find table name with
-  | None -> Map.Poly.set table ~key:name ~data:ty
-  | Some _ -> failwith (sp "Variable %s already exist" name)
-
-let update_ctx (ctx : ctx) (name : string) (ty : value_type) : ctx =
-  match ctx with
-  | [] -> failwith "empty ctx can't be updated"
-  | hd :: tl -> update_table_exn hd name ty :: tl
-
-type which = Fun | Var
-
-let update_ctxes which ctxes name ty =
-  match which with
-  | Fun -> (update_ctx (fst ctxes) name ty, snd ctxes)
-  | Var -> (fst ctxes, update_ctx (snd ctxes) name ty)
-
 let update_var_def ctxes var_def =
   match var_def with
   | DefVar (id, exp) ->
@@ -173,9 +156,6 @@ let update_ctx_list ctxes update l =
   List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
 
 let update_decl ctxes decl = update_ctx_list ctxes update_var_def decl
-
-let push_new_var_ctx ctxes init =
-  (fst ctxes, Map.Poly.of_alist_exn init :: snd ctxes)
 
 let rec update_block_item expected ctxes block_item =
   match block_item with
