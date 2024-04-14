@@ -16,8 +16,7 @@ and tree_of_primary_exp = function
 and tree_of_unary_op = function Pos -> s "+" | Neg -> s "-" | Not -> s "!"
 
 and tree_of_unary_exp = function
-  | UnaryPrimary primary_exp ->
-      tr (t "UnaryPrimary") [ tree_of_primary_exp primary_exp ]
+  | UnaryPrimary primary_exp -> tree_of_primary_exp primary_exp
   | Call (id, _) -> tr (t "Call") [ s id ]
   | UnaryOp (unary_op, unary_exp) ->
       tr (t "UnaryOp")
@@ -26,9 +25,9 @@ and tree_of_unary_exp = function
 and tree_of_binop = function Div -> s "/" | Mul -> s "*" | Rem -> s "%"
 
 and tree_of_mul_exp = function
-  | MulUnary unary_exp -> tr (t "MulUnary") [ tree_of_unary_exp unary_exp ]
+  | MulUnary unary_exp -> tree_of_unary_exp unary_exp
   | MulMul (mul_exp, binop, unary_exp) ->
-      tr (t "MulMul")
+      tr (t "Mul")
         [
           tree_of_mul_exp mul_exp;
           tree_of_binop binop;
@@ -36,11 +35,11 @@ and tree_of_mul_exp = function
         ]
 
 and tree_of_add_exp = function
-  | AddMul mul_exp -> tr (t "AndMul") [ tree_of_mul_exp mul_exp ]
+  | AddMul mul_exp -> tree_of_mul_exp mul_exp
   | AddAdd (add_exp, mul_exp) ->
-      tr (t "AddAdd") [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
+      tr (t "Add") [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
   | AddSub (add_exp, mul_exp) ->
-      tr (t "AddSub") [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
+      tr (t "Sub") [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
 
 and tree_of_relop = function
   | Lt -> s "<"
@@ -49,29 +48,29 @@ and tree_of_relop = function
   | Ge -> s ".="
 
 and tree_of_rel_exp = function
-  | RelAdd add_exp -> tr (t "RelAdd") [ tree_of_add_exp add_exp ]
+  | RelAdd add_exp -> tree_of_add_exp add_exp
   | RelRel (rel_exp, relop, add_exp) ->
-      tr (t "RelRel")
+      tr (t "Rel")
         [
           tree_of_rel_exp rel_exp; tree_of_relop relop; tree_of_add_exp add_exp;
         ]
 
 and tree_of_eq_exp = function
-  | EqRel rel_exp -> tr (t "EqRel") [ tree_of_rel_exp rel_exp ]
+  | EqRel rel_exp -> tree_of_rel_exp rel_exp
   | EqEq (eq_exp, rel_exp) ->
-      tr (t "EqEq") [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
+      tr (t "Eq") [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
   | EqNeq (eq_exp, rel_exp) ->
-      tr (t "EqNeq") [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
+      tr (t "Neq") [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
 
 and tree_of_l_and_exp = function
-  | AndEq eq_exp -> tr (t "AndEq") [ tree_of_eq_exp eq_exp ]
+  | AndEq eq_exp -> tree_of_eq_exp eq_exp
   | AndAnd (l_and_exp, eq_exp) ->
-      tr (t "AndAnd") [ tree_of_l_and_exp l_and_exp; tree_of_eq_exp eq_exp ]
+      tr (t "And") [ tree_of_l_and_exp l_and_exp; tree_of_eq_exp eq_exp ]
 
 and tree_of_exp = function
-  | OrAnd l_and_exp -> tr (t "OrAnd") [ tree_of_l_and_exp l_and_exp ]
+  | OrAnd l_and_exp -> tree_of_l_and_exp l_and_exp
   | OrOr (l_or_exp, l_and_exp) ->
-      tr (t "OrOr") [ tree_of_exp l_or_exp; tree_of_l_and_exp l_and_exp ]
+      tr (t "Or") [ tree_of_exp l_or_exp; tree_of_l_and_exp l_and_exp ]
 
 let tree_of_dim l = tr (t "Dim") (List.map l ~f:(fun i -> s (string_of_int i)))
 
