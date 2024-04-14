@@ -63,7 +63,6 @@ and either_decl_funcdef = DeclGlobal of decl | FuncDef of func_def
 type value_type =
   | IntType
   | VoidType
-  | ArrayType
-  | BoolType
+  | ArrayType of int list
   | FuncType of value_type * value_type list
 [@@deriving sexp, equal]

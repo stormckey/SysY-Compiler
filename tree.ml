@@ -14,10 +14,12 @@ and tree_of_primary_exp = function
   | Lval lval -> tree_of_lval lval
 
 and tree_of_unary_op = function Pos -> s "+" | Neg -> s "-" | Not -> s "!"
+and tree_of_func_r_params l = List.map l ~f:tree_of_exp
 
 and tree_of_unary_exp = function
   | UnaryPrimary primary_exp -> tree_of_primary_exp primary_exp
-  | Call (id, _) -> tr (t "Call") [ s id ]
+  | Call (id, func_r_params) ->
+      tr (t "Call") (s id :: tree_of_func_r_params func_r_params)
   | UnaryOp (unary_op, unary_exp) ->
       tr (t "UnaryOp")
         [ tree_of_unary_op unary_op; tree_of_unary_exp unary_exp ]
