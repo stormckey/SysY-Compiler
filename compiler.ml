@@ -10,8 +10,9 @@ let make_parse_error_msg filebuf =
 
 let parse_to_ast_exn filebuf =
   try
-    Parser.source Lexer.read filebuf
-    (* |> Ast.sexp_of_comp_unit |> Sexp.to_string_hum |> print_endline *)
+    let ast = Parser.source Lexer.read filebuf in
+    Ast.sexp_of_comp_unit ast |> Sexp.to_string_hum |> print_endline;
+    ast
   with _ ->
     make_parse_error_msg filebuf |> print_endline;
     exit 1
