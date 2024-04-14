@@ -144,9 +144,6 @@ let push_new_var_ctx ctxes = (fst ctxes, Map.Poly.empty :: snd ctxes)
 
 type which = Fun | Var
 
-let update_ctx_list ctxes update l =
-  List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
-
 let update_table_exn table name ty =
   match Map.Poly.find table name with
   | None -> Map.Poly.set table ~key:name ~data:ty
@@ -179,6 +176,9 @@ let check_stmt _ stmt =
   | Break -> ()
   | Continue -> ()
   | Return _ -> ()
+
+let update_ctx_list ctxes update l =
+  List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
 
 let update_decl ctxes decl = update_ctx_list ctxes update_var_def decl
 
