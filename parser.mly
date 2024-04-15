@@ -70,8 +70,8 @@ init_val:
   e = exp {e}
 
 funcdef:
-| INT; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (Int, i, p, b)}
-| VOID; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (Void, i, p, b)}
+| INT; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (IntType, i, p, b)}
+| VOID; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (VoidType, i, p, b)}
 
 
 func_f_params:

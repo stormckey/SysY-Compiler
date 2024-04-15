@@ -1,5 +1,6 @@
 open Ast
 open Core
+open Type
 
 let t str list = PrintBox.tree (PrintBox.text str) list
 let n str = t str []
@@ -12,9 +13,9 @@ let relop_to_tree = function
   | Le -> n "<="
   | Ge -> n ">="
 
-let functype_to_tree = function Void -> n "Void" | Int -> n "Int"
-
 [@@@warning "-8"]
+
+let functype_to_tree = function VoidType -> n "Void" | IntType -> n "Int"
 
 let rec ast_to_tree = function
   | Stmt stmt -> ast_to_tree stmt

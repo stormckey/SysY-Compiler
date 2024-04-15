@@ -80,9 +80,6 @@ let rec update_ctxes ctxes ast : ctxes =
   | DefArr (id, []) -> set_ctxes Var ctxes id IntType
   | DefArr (id, dims) -> set_ctxes Var ctxes id (ArrayType (drop_head_n dims 1))
   | FuncDef (return_type, id, paras, block) ->
-      let return_type =
-        match return_type with Void -> VoidType | Int -> IntType
-      in
       let new_vars, param_types =
         List.fold_right paras ~init:([], [])
           ~f:(fun param (vars_acc, types_acc) ->

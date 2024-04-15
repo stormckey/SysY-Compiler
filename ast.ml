@@ -1,6 +1,5 @@
-open Core
+open Type
 
-type func_type = Void | Int
 type unary_op = Pos | Neg | Not
 type binop = Div | Mul | Rem
 type relop = Lt | Gt | Le | Ge
@@ -12,7 +11,7 @@ type ast =
   | CompUnit of ast list
   | DefVar of string * ast
   | DefArr of string * int list
-  | FuncDef of func_type * string * ast list * ast list
+  | FuncDef of value_type * string * ast list * ast list
   | IntParam of ast * string
   | ArrParam of ast * string * int list
   | Block of ast list
