@@ -1,6 +1,13 @@
 # Environment
 
+Tested on docker image debian:latest and ocaml/opam:latest, the latter is recommended where opam is immediately available.
 ```bash
+#debian:latest only
+apt install opam
+opam init 
+eval $(opam env --switch=default)
+
+cd <dict>
 #install dependencies
 #make sure compiler.opam is in . 
 opam install . --deps-only
@@ -18,5 +25,3 @@ opam --version
 ocaml --version 
 The OCaml toplevel, version 5.1.1
 ```
-
-`ocaml/opam:latest` image is compatible with this project.
