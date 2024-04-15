@@ -1,9 +1,9 @@
 open Core
 
-type func_type = Void | Int [@@deriving sexp]
-type unary_op = Pos | Neg | Not [@@deriving sexp]
-type binop = Div | Mul | Rem [@@deriving sexp]
-type relop = Lt | Gt | Le | Ge [@@deriving sexp]
+type func_type = Void | Int
+type unary_op = Pos | Neg | Not
+type binop = Div | Mul | Rem
+type relop = Lt | Gt | Le | Ge
 
 type ast =
   | Number of int
@@ -35,4 +35,3 @@ type ast =
   | Neq of ast * ast
   | And of ast * ast
   | Or of ast * ast
-[@@deriving sexp]
