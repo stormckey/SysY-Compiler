@@ -7,7 +7,7 @@ let make_parse_error_msg filebuf =
   let end_pos = Lexing.lexeme_end_p filebuf in
   let start_char = diff_pos start_pos in
   let end_char = diff_pos end_pos in
-  Printf.sprintf "Parse error: line %d, characters %d-%d"
+  Printf.sprintf "Syntax error: line %d, characters %d-%d"
     (start_pos.pos_lnum - 4) start_char end_char
 
 let parse_to_ast_exn inputbuf =

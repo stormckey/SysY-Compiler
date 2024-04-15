@@ -19,11 +19,12 @@ let lookup (ctx : ctx) (name : string) : value_type option =
 let update_table_exn table name ty =
   match Map.Poly.find table name with
   | None -> Map.Poly.set table ~key:name ~data:ty
-  | Some _ -> failwith (Printf.sprintf "Variable %s already exist" name)
+  | Some _ ->
+      raise (SemanticError (Printf.sprintf "Variable %s already exist" name))
 
 let update_ctx (ctx : ctx) (name : string) (ty : value_type) : ctx =
   match ctx with
-  | [] -> failwith "empty ctx can't be updated"
+  | [] -> raise (SemanticError "empty ctx can't be updated")
   | hd :: tl -> update_table_exn hd name ty :: tl
 
 type which = Fun | Var

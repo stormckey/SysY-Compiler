@@ -63,9 +63,10 @@ and check_exp ctxes exp : value_type =
   | Number _ -> IntType
 
 and check_exp_exn ctxes exp =
-  try check_exp ctxes exp
-  with SemanticErrorWithCurTree (msg, tree) ->
-    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree exp))
+  try check_exp ctxes exp with
+  | SemanticErrorWithCurTree (msg, tree) ->
+      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree exp))
+  | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, ast_to_tree exp))
 
 (* take an ast, ctxes, return the updated ctxes *)
 let rec update_ctxes ctxes ast : ctxes =
@@ -95,9 +96,10 @@ let rec update_ctxes ctxes ast : ctxes =
   | _ -> ctxes
 
 and update_ctxes_exn ctxes ast =
-  try update_ctxes ctxes ast
-  with SemanticErrorWithCurTree (msg, tree) ->
-    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
+  try update_ctxes ctxes ast with
+  | SemanticErrorWithCurTree (msg, tree) ->
+      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
+  | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, ast_to_tree ast))
 
 (*typecheck function body, return unit*)
 and typecheck_body ctxes body return_type : unit =
@@ -136,9 +138,11 @@ and check_stmt ctxes stmt return_type =
   | Exp exp -> ignore (check_exp_exn ctxes exp)
 
 and check_stmt_exn ctxes stmt return_type =
-  try check_stmt ctxes stmt return_type
-  with SemanticErrorWithCurTree (msg, tree) ->
-    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree stmt))
+  try check_stmt ctxes stmt return_type with
+  | SemanticErrorWithCurTree (msg, tree) ->
+      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree stmt))
+  | SemanticError msg ->
+      raise (SemanticErrorWithCurTree (msg, ast_to_tree stmt))
 
 (* the clean entry for typechecking*)
 let typecheck_exn ctxes program =
@@ -154,7 +158,7 @@ let typecheck ctxes ast : unit =
   ignore
     (try typecheck_exn ctxes program with
     | SemanticErrorWithCurTreeParentTree (msg, tree1, tree2) ->
-        print_endline msg;
+        print_endline ("Semantic Error: " ^ msg);
         pt tree1;
         print_endline "-----------------in--------------------";
         pt tree2;

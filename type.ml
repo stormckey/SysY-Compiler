@@ -33,4 +33,5 @@ let ( == ) a b =
          (Printf.sprintf "type %s is incompatible with %s."
             (value_type_to_string a) (value_type_to_string b)))
 
-let id_not_found_error id = failwith (Printf.sprintf "id:%s is not defined" id)
+let id_not_found_error id =
+  raise (SemanticError (Printf.sprintf "id:%s is not defined" id))

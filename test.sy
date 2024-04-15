@@ -1,12 +1,8 @@
-
-int factorial(int n) {
-    if (n == 0) return 1;
-    return n * factorial(n - 1);
-}
+// Semantic Error at Line 6: Invalid operands to 'int' and 'int[]'
 
 int main() {
-    int n = getint();
-    int result = factorial(n);
-    putint(result);
+    int a = 1;
+    int b[5];
+    a * b;
     return 0;
 }
