@@ -3,125 +3,72 @@ open Core
 
 let t str list = PrintBox.tree (PrintBox.text str) list
 let n str = t str []
+let unaryop_to_tree = function Pos -> n "+" | Neg -> n "-" | Not -> n "!"
+let binop_to_tree = function Div -> n "/" | Mul -> n "*" | Rem -> n "%"
 
-let rec tree_of_lval (id, exp_list) =
-  t "Lval" (n id :: List.map exp_list ~f:tree_of_exp)
-
-and tree_of_primary_exp = function
-  | Number number -> n (string_of_int number)
-  | Exp exp -> t "Exp" [ tree_of_exp exp ]
-  | Lval lval -> tree_of_lval lval
-
-and tree_of_unary_op = function Pos -> n "+" | Neg -> n "-" | Not -> n "!"
-and tree_of_func_r_params l = List.map l ~f:tree_of_exp
-
-and tree_of_unary_exp = function
-  | UnaryPrimary primary_exp -> tree_of_primary_exp primary_exp
-  | Call (id, func_r_params) ->
-      t "Call" (n id :: tree_of_func_r_params func_r_params)
-  | UnaryOp (unary_op, unary_exp) ->
-      t "UnaryOp" [ tree_of_unary_op unary_op; tree_of_unary_exp unary_exp ]
-
-and tree_of_binop = function Div -> n "/" | Mul -> n "*" | Rem -> n "%"
-
-and tree_of_mul_exp = function
-  | MulUnary unary_exp -> tree_of_unary_exp unary_exp
-  | MulMul (mul_exp, binop, unary_exp) ->
-      t "Mul"
-        [
-          tree_of_mul_exp mul_exp;
-          tree_of_binop binop;
-          tree_of_unary_exp unary_exp;
-        ]
-
-and tree_of_add_exp = function
-  | AddMul mul_exp -> tree_of_mul_exp mul_exp
-  | AddAdd (add_exp, mul_exp) ->
-      t "Add" [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
-  | AddSub (add_exp, mul_exp) ->
-      t "Sub" [ tree_of_add_exp add_exp; tree_of_mul_exp mul_exp ]
-
-and tree_of_relop = function
+let relop_to_tree = function
   | Lt -> n "<"
   | Gt -> n ">"
   | Le -> n "<="
-  | Ge -> n ".="
+  | Ge -> n ">="
 
-and tree_of_rel_exp = function
-  | RelAdd add_exp -> tree_of_add_exp add_exp
-  | RelRel (rel_exp, relop, add_exp) ->
-      t "Rel"
-        [
-          tree_of_rel_exp rel_exp; tree_of_relop relop; tree_of_add_exp add_exp;
-        ]
+let functype_to_tree = function Void -> n "Void" | Int -> n "Int"
 
-and tree_of_eq_exp = function
-  | EqRel rel_exp -> tree_of_rel_exp rel_exp
-  | EqEq (eq_exp, rel_exp) ->
-      t "Eq" [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
-  | EqNeq (eq_exp, rel_exp) ->
-      t "Neq" [ tree_of_eq_exp eq_exp; tree_of_rel_exp rel_exp ]
+[@@@warning "-8"]
 
-and tree_of_l_and_exp = function
-  | AndEq eq_exp -> tree_of_eq_exp eq_exp
-  | AndAnd (l_and_exp, eq_exp) ->
-      t "And" [ tree_of_l_and_exp l_and_exp; tree_of_eq_exp eq_exp ]
-
-and tree_of_exp = function
-  | OrAnd l_and_exp -> tree_of_l_and_exp l_and_exp
-  | OrOr (l_or_exp, l_and_exp) ->
-      t "Or" [ tree_of_exp l_or_exp; tree_of_l_and_exp l_and_exp ]
-
-let tree_of_dim l = t "Dim" (List.map l ~f:(fun i -> n (string_of_int i)))
-
-let tree_of_var_def = function
-  | DefVar (id, exp) -> t "DefVar" [ n id; tree_of_exp exp ]
-  | DefArr (id, dim) -> t "DefArr" [ n id; tree_of_dim dim ]
-
-let tree_of_func_type = function Void -> n "Void" | Int -> n "Int"
-
-let tree_of_func_f_param = function
+let rec ast_to_tree = function
+  | Stmt stmt -> ast_to_tree stmt
+  | Exp exp -> ast_to_tree exp
+  | Number number -> n (string_of_int number)
+  | Lval (id, exp_list) -> t "Lval" (n id :: ast_list_to_tree_list exp_list)
+  | Call (id, func_r_params) ->
+      t "Call" (n id :: ast_list_to_tree_list func_r_params)
+  | UnaryOp (unary_op, unary_exp) ->
+      t "UnaryOp" [ unaryop_to_tree unary_op; ast_to_tree unary_exp ]
+  | Mul (mul_exp, binop, unary_exp) ->
+      t "Mul"
+        [ ast_to_tree mul_exp; binop_to_tree binop; ast_to_tree unary_exp ]
+  | Add (add_exp, mul_exp) ->
+      t "Add" [ ast_to_tree add_exp; ast_to_tree mul_exp ]
+  | Sub (add_exp, mul_exp) ->
+      t "Sub" [ ast_to_tree add_exp; ast_to_tree mul_exp ]
+  | Rel (rel_exp, relop, add_exp) ->
+      t "Rel" [ ast_to_tree rel_exp; relop_to_tree relop; ast_to_tree add_exp ]
+  | Eq (eq_exp, rel_exp) -> t "Eq" [ ast_to_tree eq_exp; ast_to_tree rel_exp ]
+  | Neq (eq_exp, rel_exp) -> t "Neq" [ ast_to_tree eq_exp; ast_to_tree rel_exp ]
+  | And (l_and_exp, eq_exp) ->
+      t "And" [ ast_to_tree l_and_exp; ast_to_tree eq_exp ]
+  | Or (l_or_exp, l_and_exp) ->
+      t "Or" [ ast_to_tree l_or_exp; ast_to_tree l_and_exp ]
+  | DefVar (id, exp) -> t "DefVar" [ n id; ast_to_tree exp ]
+  | DefArr (id, dim) -> t "DefArr" (n id :: int_list_to_tree_list dim)
   | IntParam (_, id) -> t "IntParam" [ n id ]
-  | ArrParam (_, id, dim) -> t "ArrParam" [ n id; tree_of_dim dim ]
-
-let tree_of_func_f_params l =
-  t "FuncFParams" (List.map l ~f:tree_of_func_f_param)
-
-let tree_of_decl decl = t "Int" (List.map decl ~f:tree_of_var_def)
-
-let rec tree_of_stmt = function
-  | Assign (lval, exp) -> t "Assign" [ tree_of_lval lval; tree_of_exp exp ]
-  | Expr exp -> t "Expr" [ tree_of_exp exp ]
-  | Block block -> tree_of_block block
+  | ArrParam (_, id, dim) -> t "ArrParam" (n id :: int_list_to_tree_list dim)
+  | Decl (_, decl) -> t "Int" (ast_list_to_tree_list decl)
+  | Assign (lval, exp) -> t "Assign" [ ast_to_tree lval; ast_to_tree exp ]
+  | Block block -> t "Block" (ast_list_to_tree_list block)
   | If (guard, then_, else_) -> (
       match else_ with
-      | None -> t "If" [ tree_of_exp guard; tree_of_stmt then_ ]
+      | None -> t "If" [ ast_to_tree guard; ast_to_tree then_ ]
       | Some else_ ->
-          t "If" [ tree_of_exp guard; tree_of_stmt then_; tree_of_stmt else_ ])
-  | While (guard, stmt) -> t "While" [ tree_of_exp guard; tree_of_stmt stmt ]
+          t "If" [ ast_to_tree guard; ast_to_tree then_; ast_to_tree else_ ])
+  | While (guard, stmt) -> t "While" [ ast_to_tree guard; ast_to_tree stmt ]
   | Break -> n "Break"
   | Continue -> n "Continue"
   | Return exp -> (
       match exp with
       | None -> t "Return" []
-      | Some exp -> t "Return" [ tree_of_exp exp ])
-
-and tree_of_block_item = function
-  | DeclLocal (_, decl) -> t "DeclLocal" [ tree_of_decl decl ]
-  | Stmt stmt -> tree_of_stmt stmt
-
-and tree_of_block b = t "Block" (List.map b ~f:tree_of_block_item)
-
-let tree_of_either_decl_funcdef = function
-  | DeclGlobal (_, decl) -> t "DeclGlobal" [ tree_of_decl decl ]
+      | Some exp -> t "Return" [ ast_to_tree exp ])
   | FuncDef (func_type, id, func_f_params, block) ->
       t "FuncDef"
-        [
-          tree_of_func_type func_type;
-          n id;
-          tree_of_func_f_params func_f_params;
-          tree_of_block block;
-        ]
+        ([ functype_to_tree func_type; n id ]
+        @ ast_list_to_tree_list func_f_params
+        @ ast_list_to_tree_list block)
+  | CompUnit comp_unit -> t "CompUnit" (ast_list_to_tree_list comp_unit)
 
-let tree_of_comp_unit comp_unit =
-  t "CompUnit" (List.map comp_unit ~f:tree_of_either_decl_funcdef)
+and ast_list_to_tree_list ast_list = List.map ast_list ~f:ast_to_tree
+
+and int_list_to_tree_list int_list =
+  List.map int_list ~f:(fun i -> n (string_of_int i))
+
+[@@@warning "+8"]

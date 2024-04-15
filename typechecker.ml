@@ -3,229 +3,156 @@ open Core
 open Tree
 open Table
 open Type
-open Err
 open Util
 
-let rec typecheck_lval ctxes (name, exp_list) =
-  let self_tree = tree_of_lval (name, exp_list) in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  let check_all_int () =
-    List.iter exp_list ~f:(fun exp ->
-        check_type_mismatch IntType (typecheck_exp ctxes exp) (tree_of_exp exp))
+[@@@warning "-8"]
+
+(* check the type of the first arg
+   * and add the current tree into exception if check failed *)
+let rec check1 ctxes (ast : ast) (ty : value_type) : unit =
+  try check_exp ctxes ast == ty
+  with TypeMismatchException msg ->
+    raise (TypeMismatchExceptionWithCurTree (msg, ast_to_tree ast))
+
+(* add context to check and add parent tree into exception*)
+and make_check1 ctxes ast =
+  let check1 a b =
+    try check1 ctxes a b
+    with TypeMismatchExceptionWithCurTree (msg, tree) ->
+      raise
+        (TypeMismatchExceptionWithCurTreeParentTree (msg, tree, ast_to_tree ast))
   in
-  let get_type_after_indexing dims =
-    let l_dims = List.length dims in
-    let l_idxes = List.length exp_list in
-    if l_dims = l_idxes - 1 then IntType
-    else if l_dims < l_idxes - 1 then
-      fail_with_tree self_tree "the dimension of indexes is too much"
-    else ArrayType (drop_head_n dims l_idxes)
-  in
-  match lookup (snd ctxes) name with
-  | None -> id_not_found_error name
-  | Some IntType ->
-      if list_nonempty exp_list then
-        fail_with_tree self_tree (sp "can not index over an int:%s" name);
+  check1
+
+(* take an exp, return its type *)
+and check_exp ctxes exp : value_type =
+  let check1 = make_check1 ctxes exp in
+  match exp with
+  | Or (left_exp, right_exp)
+  | And (left_exp, right_exp)
+  | Eq (left_exp, right_exp)
+  | Neq (left_exp, right_exp)
+  | Rel (left_exp, _, right_exp)
+  | Add (left_exp, right_exp)
+  | Sub (left_exp, right_exp)
+  | Mul (left_exp, _, right_exp) ->
+      check1 left_exp IntType;
+      check1 right_exp IntType;
       IntType
-  | Some (ArrayType dims) ->
-      if list_empty exp_list then ArrayType dims
-      else (
-        check_all_int ();
-        get_type_after_indexing dims)
-  | _ -> failwith "the lval must be of either int or array"
-
-and typecheck_primary_exp ctxes exp =
-  match exp with
-  | Exp e -> typecheck_exp ctxes e
-  | Lval lval -> typecheck_lval ctxes lval
-  | Number _ -> IntType
-
-and typecheck_unary_exp ctxes exp =
-  let self_tree = tree_of_unary_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  let check_args_paras args paras =
-    zip args paras
-    |> List.iter ~f:(fun (arg, para) ->
-           check_type_mismatch para (typecheck_exp ctxes arg)
-             (tree_of_unary_exp exp))
-  in
-  match exp with
-  | UnaryPrimary primary_exp -> typecheck_primary_exp ctxes primary_exp
+  | UnaryOp (_, unary_exp) ->
+      check1 unary_exp IntType;
+      IntType
   | Call (name, args) -> (
       match lookup (fst ctxes) name with
       | None -> failwith (sp "function:%s is not defined" name)
       | Some (FuncType (return_type, paras)) ->
-          check_args_paras args paras;
+          zip args paras |> List.iter ~f:(fun (arg, para) -> check1 arg para);
           return_type
       | _ -> failwith (sp "try to call on non-function: %s" name))
-  | UnaryOp (_, unary_exp) ->
-      check_type_mismatch IntType
-        (typecheck_unary_exp ctxes unary_exp)
-        (tree_of_unary_exp unary_exp);
-      IntType
+  | Exp exp -> check_exp ctxes exp
+  | Lval (id, idxes) -> (
+      match lookup (snd ctxes) id with
+      | None -> id_not_found_error id
+      | Some IntType ->
+          if list_nonempty idxes then failwith "can not index over an int:%s";
+          IntType
+      | Some (ArrayType dims) ->
+          if list_empty idxes then ArrayType dims
+          else (
+            List.iter idxes ~f:(fun dim -> check1 dim IntType);
+            let l_dims = List.length dims in
+            let l_idxes = List.length idxes in
+            if l_dims = l_idxes - 1 then IntType
+            else if l_dims < l_idxes - 1 then
+              failwith "the dimension of indexes is too much"
+            else ArrayType (drop_head_n dims l_idxes))
+      | _ -> failwith "the lval must be of either int or array")
+  | Number _ -> IntType
 
-and typecheck_mul_exp ctxes exp =
-  let self_tree = tree_of_mul_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | MulUnary unary_exp -> typecheck_unary_exp ctxes unary_exp
-  | MulMul (mul_exp, _, unary_exp) ->
-      check_type_mismatch IntType
-        (typecheck_mul_exp ctxes mul_exp)
-        (tree_of_mul_exp mul_exp);
-      check_type_mismatch IntType
-        (typecheck_unary_exp ctxes unary_exp)
-        (tree_of_unary_exp unary_exp);
-      IntType
-
-and typecheck_add_exp ctxes exp =
-  let self_tree = tree_of_add_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | AddMul mul_exp -> typecheck_mul_exp ctxes mul_exp
-  | AddAdd (add_exp, mul_exp) | AddSub (add_exp, mul_exp) ->
-      check_type_mismatch IntType
-        (typecheck_add_exp ctxes add_exp)
-        (tree_of_add_exp add_exp);
-      check_type_mismatch IntType
-        (typecheck_mul_exp ctxes mul_exp)
-        (tree_of_mul_exp mul_exp);
-      IntType
-
-and typecheck_rel_exp ctxes exp =
-  let self_tree = tree_of_rel_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | RelAdd add_exp -> typecheck_add_exp ctxes add_exp
-  | RelRel (rel_exp, _, add_exp) ->
-      check_type_mismatch IntType
-        (typecheck_add_exp ctxes add_exp)
-        (tree_of_add_exp add_exp);
-      check_type_mismatch IntType
-        (typecheck_rel_exp ctxes rel_exp)
-        (tree_of_rel_exp rel_exp);
-      IntType
-
-and typecheck_eq_exp ctxes exp =
-  let self_tree = tree_of_eq_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | EqRel rel_exp -> typecheck_rel_exp ctxes rel_exp
-  | EqEq (eq_exp, rel_exp) | EqNeq (eq_exp, rel_exp) ->
-      check_type_mismatch IntType
-        (typecheck_eq_exp ctxes eq_exp)
-        (tree_of_eq_exp eq_exp);
-      check_type_mismatch IntType
-        (typecheck_rel_exp ctxes rel_exp)
-        (tree_of_rel_exp rel_exp);
-      IntType
-
-and typecheck_l_and_exp ctxes exp =
-  let self_tree = tree_of_l_and_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | AndEq andeq -> typecheck_eq_exp ctxes andeq
-  | AndAnd (l_and_exp, eq_exp) ->
-      check_type_mismatch IntType
-        (typecheck_l_and_exp ctxes l_and_exp)
-        (tree_of_l_and_exp l_and_exp);
-      check_type_mismatch IntType
-        (typecheck_eq_exp ctxes eq_exp)
-        (tree_of_eq_exp eq_exp);
-      IntType
-
-and typecheck_exp ctxes exp =
-  let self_tree = tree_of_exp exp in
-  let check_type_mismatch = check_type_mismatch self_tree in
-  match exp with
-  | OrAnd orand -> typecheck_l_and_exp ctxes orand
-  | OrOr (l_or_exp, l_and_exp) ->
-      check_type_mismatch IntType
-        (typecheck_l_and_exp ctxes l_and_exp)
-        (tree_of_l_and_exp l_and_exp);
-      check_type_mismatch IntType
-        (typecheck_exp ctxes l_or_exp)
-        (tree_of_exp l_or_exp);
-      IntType
-
-let update_var_def ctxes = function
+(* take an ast, ctxes, return the updated ctxes *)
+let rec update_ctxes ctxes ast : ctxes =
+  let check1 = make_check1 ctxes ast in
+  match ast with
+  | Decl (_, def_list) -> List.fold_left def_list ~init:ctxes ~f:update_ctxes
   | DefVar (id, exp) ->
-      check_type_mismatch (tree_of_exp exp) IntType (typecheck_exp ctxes exp)
-        (tree_of_exp exp);
-      update_ctxes Var ctxes id IntType
-  | DefArr (id, []) -> update_ctxes Var ctxes id IntType
-  | DefArr (id, dims) ->
-      update_ctxes Var ctxes id (ArrayType (drop_head_n dims 1))
+      check1 exp IntType;
+      set_ctxes Var ctxes id IntType
+  | DefArr (id, []) -> set_ctxes Var ctxes id IntType
+  | DefArr (id, dims) -> set_ctxes Var ctxes id (ArrayType (drop_head_n dims 1))
+  | FuncDef (return_type, id, paras, block) ->
+      let return_type =
+        match return_type with Void -> VoidType | Int -> IntType
+      in
+      let new_vars, param_types =
+        List.fold_right paras ~init:([], [])
+          ~f:(fun param (vars_acc, types_acc) ->
+            match param with
+            | IntParam (_, id) ->
+                ((id, IntType) :: vars_acc, IntType :: types_acc)
+            | ArrParam (_, id, dims) ->
+                ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
+      in
+      let func_type = FuncType (return_type, param_types) in
+      let new_ctxes = set_ctxes Fun ctxes id func_type in
+      let ctxes = push_new_var_ctx new_ctxes new_vars in
+      typecheck_body ctxes block return_type;
+      new_ctxes
+  | _ -> ctxes
 
-let update_ctx_list ctxes update l =
-  List.fold_left l ~init:ctxes ~f:(fun ctxes item -> update ctxes item)
-
-let update_decl ctxes decl = update_ctx_list ctxes update_var_def decl
-
-let rec update_block_item expected ctxes block_item =
-  match block_item with
-  | DeclLocal (_, decl) -> update_decl ctxes decl
-  | Stmt stmt ->
-      check_stmt ctxes stmt expected;
-      ctxes
-
-and check_block ctxes block expected =
-  update_ctx_list ctxes (update_block_item expected) block
-
-and check_stmt ctxes stmt expected =
-  let self_tree = tree_of_stmt stmt in
-  let check_type_mismatch = check_type_mismatch self_tree in
+(* type check stmt, return unit *)
+and check_stmt ctxes stmt return_type =
+  let check1 = make_check1 ctxes stmt in
   match stmt with
   | Assign (lval, exp) ->
-      check_type_mismatch IntType
-        (typecheck_lval ctxes lval)
-        (tree_of_lval lval);
-      check_type_mismatch IntType (typecheck_exp ctxes exp) (tree_of_stmt stmt)
-  | Expr exp -> ignore (typecheck_exp ctxes exp)
+      check1 lval IntType;
+      check1 exp IntType
   | Block block ->
-      ignore ((push_new_var_ctx ctxes [] |> check_block) block expected)
+      let new_ctxes = push_new_var_ctx ctxes [] in
+      typecheck_body new_ctxes block return_type
   | If (guard, then_, else_maybe) -> (
-      check_type_mismatch IntType
-        (typecheck_exp ctxes guard)
-        (tree_of_exp guard);
-      check_stmt ctxes then_ expected;
+      check1 guard IntType;
+      check_stmt ctxes then_ return_type;
       match else_maybe with
-      | Some else_ -> check_stmt ctxes else_ expected
+      | Some else_ -> check_stmt ctxes else_ return_type
       | None -> ())
   | While (guard, stmt) ->
-      check_type_mismatch IntType
-        (typecheck_exp ctxes guard)
-        (tree_of_exp guard);
-      check_stmt ctxes stmt expected
+      check1 guard IntType;
+      check_stmt ctxes stmt return_type
   | Break | Continue -> ()
   | Return exp -> (
       match exp with
-      | None -> check_type_mismatch expected VoidType self_tree
-      | Some exp ->
-          check_type_mismatch expected (typecheck_exp ctxes exp)
-            (tree_of_exp exp))
+      | None -> return_type == VoidType
+      | Some exp -> check1 exp return_type)
+  | Exp exp -> ignore (check_exp ctxes exp)
 
-let update_func_def ctxes (return_type, name, func_f_params, block) =
-  let return_type =
-    match return_type with Void -> VoidType | Int -> IntType
+(*typecheck function body, return unit*)
+and typecheck_body ctxes body return_type : unit =
+  ignore
+    (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
+         match block_item with
+         | Decl _ as decl -> update_ctxes ctxes decl
+         | Stmt stmt ->
+             check_stmt ctxes stmt return_type;
+             ctxes))
+
+(* the clean entry for typechecking*)
+let typecheck_exn ctxes program =
+  List.fold_left program ~init:ctxes ~f:update_ctxes
+
+(* wrapped entry with exception handling*)
+let typecheck ctxes ast : unit =
+  let (CompUnit program) = ast in
+  let pt tree =
+    PrintBox_text.output stdout tree;
+    print_endline ""
   in
-  let new_vars, param_types =
-    List.fold_right func_f_params ~init:([], [])
-      ~f:(fun param (vars_acc, types_acc) ->
-        match param with
-        | IntParam (_, id) -> ((id, IntType) :: vars_acc, IntType :: types_acc)
-        | ArrParam (_, id, dims) ->
-            ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
-  in
-  let func_type = FuncType (return_type, param_types) in
-  let ctxes = update_ctxes Fun ctxes name func_type in
-  let ctxes = push_new_var_ctx ctxes new_vars in
-  ignore (check_block ctxes block return_type);
-  ctxes
+  ignore
+    (try typecheck_exn ctxes program
+     with TypeMismatchExceptionWithCurTreeParentTree (msg, tree1, tree2) ->
+       print_endline msg;
+       pt tree1;
+       print_endline "-----------------in--------------------";
+       pt tree2;
+       exit 1)
 
-let update_either_decl_funcdef ctxes = function
-  | DeclGlobal (_, decl) -> update_decl ctxes decl
-  | FuncDef func_def -> update_func_def ctxes func_def
-
-let typecheck ctxes program : unit =
-  ignore (update_ctx_list ctxes update_either_decl_funcdef program)
+[@@@warning "+8"]

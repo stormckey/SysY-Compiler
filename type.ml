@@ -1,5 +1,11 @@
 open Core
 
+exception TypeMismatchException of string
+exception TypeMismatchExceptionWithCurTree of string * PrintBox.t
+
+exception
+  TypeMismatchExceptionWithCurTreeParentTree of string * PrintBox.t * PrintBox.t
+
 type value_type =
   | IntType
   | VoidType
@@ -7,7 +13,7 @@ type value_type =
   | FuncType of value_type * value_type list
 [@@deriving equal]
 
-let rec string_of_value_type value_type =
+let rec value_type_to_string value_type =
   match value_type with
   | IntType -> "int"
   | VoidType -> "void"
@@ -16,10 +22,17 @@ let rec string_of_value_type value_type =
       "int(*)"
       ^ String.concat (List.map int_list ~f:(fun i -> Printf.sprintf "[%d]" i))
   | FuncType (return_type, paras) ->
-      string_of_value_type return_type
+      value_type_to_string return_type
       ^ " ("
-      ^ String.concat (List.map paras ~f:string_of_value_type)
+      ^ String.concat (List.map paras ~f:value_type_to_string)
       ^ ")"
 
-let ( == ) a b = equal_value_type a b
-let ( <> ) a b = not (a == b)
+let ( == ) a b =
+  if equal_value_type a b then ()
+  else
+    raise
+      (TypeMismatchException
+         (Printf.sprintf "Type %s is incompatible with %s."
+            (value_type_to_string a) (value_type_to_string b)))
+
+let id_not_found_error id = failwith (Printf.sprintf "id:%s is not defined" id)

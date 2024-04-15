@@ -40,7 +40,7 @@
 %nonassoc THEN
 %nonassoc ELSE
 
-%start <comp_unit> source
+%start <ast> source
 
 %%
 
@@ -48,12 +48,15 @@ source:
   p = comp_unit; EOF { p }
 
 comp_unit:
+l = comp_unit_inside {CompUnit l}
+
+comp_unit_inside:
 | (* empty *) { [] }
-| d = decl; c = comp_unit { (DeclGlobal d) :: c }
-| f = funcdef; c = comp_unit {(FuncDef f) :: c}
+| d = decl; c = comp_unit_inside { d :: c }
+| f = funcdef; c = comp_unit_inside { f :: c}
 
 decl:
-  INT; v = vardef_list; SEMICOLON {(Btype, v)}
+  INT; v = vardef_list; SEMICOLON {Decl (BType, v)}
 
 vardef_list:
   l = separated_list(COMMA, vardef) {l}
@@ -67,34 +70,34 @@ init_val:
   e = exp {e}
 
 funcdef:
-| INT; i = id; LPARE; p = func_f_params; RPARE; b =  block {(Int, i, p, b)}
-| VOID; i = id; LPARE; p = func_f_params; RPARE; b =  block {(Void, i, p, b)}
+| INT; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (Int, i, p, b)}
+| VOID; i = id; LPARE; p = func_f_params; RPARE; b =  block {FuncDef (Void, i, p, b)}
 
 
 func_f_params:
   l = separated_list(COMMA, func_f_param) {l}
 
 func_f_param:
-| INT; i = id; {IntParam (Btype,i)}
-| INT; i = id; LBRACK; RBRACK; l = dimensions_list{ArrParam (Btype, i, l)}
+| INT; i = id; {IntParam (BType,i)}
+| INT; i = id; LBRACK; RBRACK; l = dimensions_list{ArrParam (BType, i, l)}
 
 dimensions_list:
   l = list(bracket_int) {l}
 
 bracket_int:
- LBRACK; i = INT_CONST; RBRACK;{i}
+ LBRACK; i = INT_CONST; RBRACK;{ i}
 
 block:
 | LBRACE; l = block_list; RBRACE; {l}
 
 block_list:
 | (* empty *) {[ ]}
-| d = decl; l = block_list { (DeclLocal d) :: l}
+| d = decl; l = block_list { d :: l}
 | s = stmt; l = block_list { (Stmt s) :: l}
 
 stmt:
 | l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
-| e = exp; SEMICOLON {Expr e}
+| e = exp; SEMICOLON {e}
 | b = block {Block b}
 | IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt {If (e, s1, Some s2)} 
 | IF; LPARE; e = exp; RPARE; s =stmt; {If (e, s, None)}  %prec THEN
@@ -105,25 +108,25 @@ stmt:
 | RETURN; SEMICOLON {Return None}
 
 exp:
- l = l_or_exp {l}
+ l = l_or_exp {Exp l}
 
 lval:
- i = id; l = exp_list {(i, l)}
+ i = id; l = exp_list {Lval (i, l)}
  
 exp_list:
 | (* empty *) {[]}
 | LBRACK; e = exp; RBRACK; l = exp_list {e :: l}
 
 primary_exp:
-| LPARE; e = exp; RPARE; {Exp e}
-| l = lval {Lval l}
+| LPARE; e = exp; RPARE; {e}
+| l = lval {l}
 | n = number {Number n}
 
 number:
  n = INT_CONST { n }
  
 unary_exp:
-| p = primary_exp {UnaryPrimary p}
+| p = primary_exp {p}
 | i = id; LPARE; f = func_r_params; RPARE; {Call (i, f)}
 | u = unary_op; ue = unary_exp; {UnaryOp (u, ue)}
  
@@ -136,8 +139,8 @@ func_r_params:
  l = separated_list(COMMA, exp) {l}
  
 mul_exp:
-| u = unary_exp {MulUnary u}
-| m = mul_exp; b = binop; u = unary_exp {MulMul (m, b, u)}
+| u = unary_exp {u}
+| m = mul_exp; b = binop; u = unary_exp {Mul (m, b, u)}
 
 binop:
 | DIV {Div}
@@ -145,13 +148,13 @@ binop:
 | REM {Rem}
 
 add_exp:
-| m = mul_exp {AddMul m}
-| a = add_exp; ADD; m = mul_exp {AddAdd (a, m)}
-| a = add_exp; SUB; m = mul_exp {AddSub (a, m)}
+| m = mul_exp {m}
+| a = add_exp; ADD; m = mul_exp {Add (a, m)}
+| a = add_exp; SUB; m = mul_exp {Sub (a, m)}
 
 rel_exp:
-| a = add_exp {RelAdd a}
-| r = rel_exp; op = relop; a = add_exp {RelRel (r, op, a)}
+| a = add_exp {a}
+| r = rel_exp; op = relop; a = add_exp {Rel (r, op, a)}
 
 relop:
 | LT {Lt}
@@ -160,22 +163,18 @@ relop:
 | GE {Ge}
 
 eq_exp:
-| r = rel_exp {EqRel r}
-| e = eq_exp; EQ; r = rel_exp {EqEq (e, r)}
-| e = eq_exp; NEQ; r = rel_exp {EqNeq (e, r)}
+| r = rel_exp {r}
+| e = eq_exp; EQ; r = rel_exp {Eq (e, r)}
+| e = eq_exp; NEQ; r = rel_exp {Neq (e, r)}
 
 l_and_exp:
-| e = eq_exp {AndEq e}
-| l = l_and_exp; AND; e = eq_exp {AndAnd (l,e)}
+| e = eq_exp {e}
+| l = l_and_exp; AND; e = eq_exp {And (l,e)}
 
 l_or_exp:
-| a = l_and_exp {OrAnd a}
-| o = l_or_exp; OR; a = l_and_exp {OrOr (o, a)}
+| a = l_and_exp {a}
+| o = l_or_exp; OR; a = l_and_exp {Or (o, a)}
 
 id:
     s = ID {s}
-
-
-
-
 

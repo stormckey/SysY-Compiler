@@ -1,59 +1,38 @@
-type id = string
-type int_const = int
-type btype = Btype
+open Core
 
-type decl = btype * var_def list
-and comp_unit = either_decl_funcdef list
-and var_def = DefVar of id * exp | DefArr of id * int_const list
-and func_def = func_type * id * func_f_params * block
-and func_type = Void | Int
-and func_f_params = func_f_param list
+type func_type = Void | Int [@@deriving sexp]
+type unary_op = Pos | Neg | Not [@@deriving sexp]
+type binop = Div | Mul | Rem [@@deriving sexp]
+type relop = Lt | Gt | Le | Ge [@@deriving sexp]
 
-and func_f_param =
-  | IntParam of btype * id
-  | ArrParam of btype * id * int_const list
-
-and block = block_item list
-and block_item = DeclLocal of decl | Stmt of stmt
-
-and stmt =
-  | Assign of lval * exp
-  | Expr of exp
-  | Block of block
-  | If of exp * stmt * stmt option
-  | While of exp * stmt
+type ast =
+  | Number of int
+  | BType
+  | Decl of ast * ast list
+  | CompUnit of ast list
+  | DefVar of string * ast
+  | DefArr of string * int list
+  | FuncDef of func_type * string * ast list * ast list
+  | IntParam of ast * string
+  | ArrParam of ast * string * int list
+  | Block of ast list
+  | Stmt of ast
+  | Exp of ast
+  | Assign of ast * ast
+  | If of ast * ast * ast option
+  | While of ast * ast
   | Break
   | Continue
-  | Return of exp option
-
-and exp = l_or_exp
-and lval = id * exp list
-and primary_exp = Exp of exp | Lval of lval | Number of number
-and number = int_const
-
-and unary_exp =
-  | UnaryPrimary of primary_exp
-  | Call of id * func_r_params
-  | UnaryOp of unaryop * unary_exp
-
-and unaryop = Pos | Neg | Not
-and func_r_params = exp list
-and mul_exp = MulUnary of unary_exp | MulMul of mul_exp * binop * unary_exp
-and binop = Div | Mul | Rem
-
-and add_exp =
-  | AddMul of mul_exp
-  | AddAdd of add_exp * mul_exp
-  | AddSub of add_exp * mul_exp
-
-and rel_exp = RelAdd of add_exp | RelRel of rel_exp * relop * add_exp
-and relop = Lt | Gt | Le | Ge
-
-and eq_exp =
-  | EqRel of rel_exp
-  | EqEq of eq_exp * rel_exp
-  | EqNeq of eq_exp * rel_exp
-
-and l_and_exp = AndEq of eq_exp | AndAnd of l_and_exp * eq_exp
-and l_or_exp = OrAnd of l_and_exp | OrOr of l_or_exp * l_and_exp
-and either_decl_funcdef = DeclGlobal of decl | FuncDef of func_def
+  | Return of ast option
+  | Lval of string * ast list
+  | Call of string * ast list
+  | UnaryOp of unary_op * ast
+  | Mul of ast * binop * ast
+  | Add of ast * ast
+  | Sub of ast * ast
+  | Rel of ast * relop * ast
+  | Eq of ast * ast
+  | Neq of ast * ast
+  | And of ast * ast
+  | Or of ast * ast
+[@@deriving sexp]

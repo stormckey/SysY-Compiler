@@ -28,7 +28,7 @@ let update_ctx (ctx : ctx) (name : string) (ty : value_type) : ctx =
 
 type which = Fun | Var
 
-let update_ctxes which ctxes name ty =
+let set_ctxes which ctxes name ty =
   match which with
   | Fun -> (update_ctx (fst ctxes) name ty, snd ctxes)
   | Var -> (fst ctxes, update_ctx (snd ctxes) name ty)

@@ -13,7 +13,7 @@ let make_parse_error_msg filebuf =
 let parse_to_ast_exn inputbuf =
   try
     let ast = Parser.source Lexer.read inputbuf in
-    Tree.tree_of_comp_unit ast |> PrintBox_text.output stdout;
+    Tree.ast_to_tree ast |> PrintBox_text.output stdout;
     print_endline "";
     ast
   with _ ->
