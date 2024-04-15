@@ -10,22 +10,15 @@ open Util
 (* check the type of the first arg
    * and add the current tree into exception if check failed *)
 let rec check1 ctxes (ast : ast) (ty : value_type) : unit =
-  try check_exp ctxes ast == ty
+  try check_exp_exn ctxes ast == ty
   with SemanticError msg ->
     raise (SemanticErrorWithCurTree (msg, ast_to_tree ast))
 
 (* add context to check and add parent tree into exception*)
-and make_check1 ctxes ast =
-  let check1 a b =
-    try check1 ctxes a b
-    with SemanticErrorWithCurTree (msg, tree) ->
-      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
-  in
-  check1
 
 (* take an exp, return its type *)
 and check_exp ctxes exp : value_type =
-  let check1 = make_check1 ctxes exp in
+  let check1 = check1 ctxes in
   match exp with
   | Or (left_exp, right_exp)
   | And (left_exp, right_exp)
@@ -48,7 +41,7 @@ and check_exp ctxes exp : value_type =
           zip args paras |> List.iter ~f:(fun (arg, para) -> check1 arg para);
           return_type
       | _ -> raise (SemanticError (sp "try to call on non-function: %s" id)))
-  | Exp exp -> check_exp ctxes exp
+  | Exp exp -> check_exp_exn ctxes exp
   | Lval (id, idxes) -> (
       match lookup (snd ctxes) id with
       | None -> id_not_found_error id
@@ -69,11 +62,16 @@ and check_exp ctxes exp : value_type =
       | _ -> raise (SemanticError "the lval must be of either int or array"))
   | Number _ -> IntType
 
+and check_exp_exn ctxes exp =
+  try check_exp ctxes exp
+  with SemanticErrorWithCurTree (msg, tree) ->
+    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree exp))
+
 (* take an ast, ctxes, return the updated ctxes *)
 let rec update_ctxes ctxes ast : ctxes =
-  let check1 = make_check1 ctxes ast in
+  let check1 = check1 ctxes in
   match ast with
-  | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes
+  | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes_exn
   | DefVar (id, exp) ->
       check1 exp IntType;
       set_ctxes Var ctxes id IntType
@@ -95,19 +93,25 @@ let rec update_ctxes ctxes ast : ctxes =
       new_ctxes
   | _ -> ctxes
 
+and update_ctxes_exn ctxes ast =
+  try update_ctxes ctxes ast
+  with SemanticErrorWithCurTree (msg, tree) ->
+    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
+
 (*typecheck function body, return unit*)
 and typecheck_body ctxes body return_type : unit =
   ignore
     (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
          match block_item with
-         | Decl _ as decl -> update_ctxes ctxes decl
+         | Decl _ as decl -> update_ctxes_exn ctxes decl
          | Stmt stmt ->
-             check_stmt ctxes stmt return_type;
+             check_stmt_exn ctxes stmt return_type;
              ctxes))
 
 (* type check stmt, return unit *)
 and check_stmt ctxes stmt return_type =
-  let check1 = make_check1 ctxes stmt in
+  let check1 = check1 ctxes in
+  let check_stmt_exn = check_stmt_exn ctxes in
   match stmt with
   | Assign (lval, exp) ->
       check1 lval IntType;
@@ -117,22 +121,27 @@ and check_stmt ctxes stmt return_type =
       typecheck_body new_ctxes block return_type
   | IfElse (guard, then_, else_) ->
       check1 guard IntType;
-      check_stmt ctxes then_ return_type;
-      check_stmt ctxes else_ return_type
+      check_stmt_exn then_ return_type;
+      check_stmt_exn else_ return_type
   | IfThen (guard, then_) ->
       check1 guard IntType;
-      check_stmt ctxes then_ return_type
+      check_stmt_exn then_ return_type
   | While (guard, stmt) ->
       check1 guard IntType;
-      check_stmt ctxes stmt return_type
+      check_stmt_exn stmt return_type
   | Break | Continue -> ()
   | ReturnNone -> return_type == VoidType
   | Return exp -> check1 exp return_type
-  | Exp exp -> ignore (check_exp ctxes exp)
+  | Exp exp -> ignore (check_exp_exn ctxes exp)
+
+and check_stmt_exn ctxes stmt return_type =
+  try check_stmt ctxes stmt return_type
+  with SemanticErrorWithCurTree (msg, tree) ->
+    raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree stmt))
 
 (* the clean entry for typechecking*)
 let typecheck_exn ctxes program =
-  List.fold_left program ~init:ctxes ~f:update_ctxes
+  List.fold_left program ~init:ctxes ~f:update_ctxes_exn
 
 (* wrapped entry with exception handling*)
 let typecheck ctxes ast : unit =
