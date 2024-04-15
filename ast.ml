@@ -6,14 +6,13 @@ type relop = Lt | Gt | Le | Ge
 
 type ast =
   | Number of int
-  | BType
-  | Decl of ast * ast list
+  | Decl of ast list
   | CompUnit of ast list
   | DefVar of string * ast
   | DefArr of string * int list
   | FuncDef of value_type * string * ast list * ast list
-  | IntParam of ast * string
-  | ArrParam of ast * string * int list
+  | IntParam of string
+  | ArrParam of string * int list
   | Block of ast list
   | Stmt of ast
   | Exp of ast

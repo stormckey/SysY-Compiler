@@ -73,7 +73,7 @@ and check_exp ctxes exp : value_type =
 let rec update_ctxes ctxes ast : ctxes =
   let check1 = make_check1 ctxes ast in
   match ast with
-  | Decl (_, def_list) -> List.fold_left def_list ~init:ctxes ~f:update_ctxes
+  | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes
   | DefVar (id, exp) ->
       check1 exp IntType;
       set_ctxes Var ctxes id IntType
@@ -84,9 +84,8 @@ let rec update_ctxes ctxes ast : ctxes =
         List.fold_right paras ~init:([], [])
           ~f:(fun param (vars_acc, types_acc) ->
             match param with
-            | IntParam (_, id) ->
-                ((id, IntType) :: vars_acc, IntType :: types_acc)
-            | ArrParam (_, id, dims) ->
+            | IntParam id -> ((id, IntType) :: vars_acc, IntType :: types_acc)
+            | ArrParam (id, dims) ->
                 ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
       in
       let func_type = FuncType (return_type, param_types) in

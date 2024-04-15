@@ -43,9 +43,9 @@ let rec ast_to_tree = function
       t "Or" [ ast_to_tree l_or_exp; ast_to_tree l_and_exp ]
   | DefVar (id, exp) -> t "DefVar" [ n id; ast_to_tree exp ]
   | DefArr (id, dim) -> t "DefArr" (n id :: int_list_to_tree_list dim)
-  | IntParam (_, id) -> t "IntParam" [ n id ]
-  | ArrParam (_, id, dim) -> t "ArrParam" (n id :: int_list_to_tree_list dim)
-  | Decl (_, decl) -> t "Int" (ast_list_to_tree_list decl)
+  | IntParam id -> t "IntParam" [ n id ]
+  | ArrParam (id, dim) -> t "ArrParam" (n id :: int_list_to_tree_list dim)
+  | Decl decl -> t "Int" (ast_list_to_tree_list decl)
   | Assign (lval, exp) -> t "Assign" [ ast_to_tree lval; ast_to_tree exp ]
   | Block block -> t "Block" (ast_list_to_tree_list block)
   | If (guard, then_, else_) -> (

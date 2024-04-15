@@ -56,7 +56,7 @@ comp_unit_inside:
 | f = funcdef; c = comp_unit_inside { f :: c}
 
 decl:
-  INT; v = vardef_list; SEMICOLON {Decl (BType, v)}
+  INT; v = vardef_list; SEMICOLON {Decl v}
 
 vardef_list:
   l = separated_list(COMMA, vardef) {l}
@@ -78,8 +78,8 @@ func_f_params:
   l = separated_list(COMMA, func_f_param) {l}
 
 func_f_param:
-| INT; i = id; {IntParam (BType,i)}
-| INT; i = id; LBRACK; RBRACK; l = dimensions_list{ArrParam (BType, i, l)}
+| INT; i = id; {IntParam i}
+| INT; i = id; LBRACK; RBRACK; l = dimensions_list{ArrParam (i, l)}
 
 dimensions_list:
   l = list(bracket_int) {l}
