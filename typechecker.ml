@@ -70,13 +70,14 @@ and check_exp_exn ctxes exp =
 (* take an ast, ctxes, return the updated ctxes *)
 let rec update_ctxes ctxes ast : ctxes =
   let check1 = check1 ctxes in
+  let set_ctxes = set_ctxes ctxes in
   match ast with
   | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes_exn
   | DefVar (id, exp) ->
       check1 exp IntType;
-      set_ctxes Var ctxes id IntType
-  | DefArr (id, []) -> set_ctxes Var ctxes id IntType
-  | DefArr (id, dims) -> set_ctxes Var ctxes id (ArrayType (drop_head_n dims 1))
+      set_ctxes Var id IntType
+  | DefArr (id, []) -> set_ctxes Var id IntType
+  | DefArr (id, dims) -> set_ctxes Var id (ArrayType (drop_head_n dims 1))
   | FuncDef (return_type, id, paras, block) ->
       let new_vars, param_types =
         List.fold_right paras ~init:([], [])
@@ -87,7 +88,7 @@ let rec update_ctxes ctxes ast : ctxes =
                 ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
       in
       let func_type = FuncType (return_type, param_types) in
-      let new_ctxes = set_ctxes Fun ctxes id func_type in
+      let new_ctxes = set_ctxes Fun id func_type in
       let ctxes = push_new_var_ctx new_ctxes new_vars in
       typecheck_body ctxes block return_type;
       new_ctxes
