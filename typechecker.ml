@@ -197,8 +197,7 @@ and check_stmt ctxes stmt expected =
         (typecheck_exp ctxes guard)
         (tree_of_exp guard);
       check_stmt ctxes stmt expected
-  | Break -> ()
-  | Continue -> ()
+  | Break | Continue -> ()
   | Return exp -> (
       match exp with
       | None -> check_type_mismatch expected VoidType self_tree
@@ -207,18 +206,16 @@ and check_stmt ctxes stmt expected =
             (tree_of_exp exp))
 
 let update_func_def ctxes (return_type, name, func_f_params, block) =
-  let new_vars =
-    List.map func_f_params ~f:(function
-      | IntParam (_, id) -> (id, IntType)
-      | ArrParam (_, id, dims) -> (id, ArrayType dims))
-  in
-  let param_types =
-    List.map func_f_params ~f:(function
-      | IntParam _ -> IntType
-      | ArrParam (_, _, dims) -> ArrayType dims)
-  in
   let return_type =
     match return_type with Void -> VoidType | Int -> IntType
+  in
+  let new_vars, param_types =
+    List.fold_right func_f_params ~init:([], [])
+      ~f:(fun param (vars_acc, types_acc) ->
+        match param with
+        | IntParam (_, id) -> ((id, IntType) :: vars_acc, IntType :: types_acc)
+        | ArrParam (_, id, dims) ->
+            ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
   in
   let func_type = FuncType (return_type, param_types) in
   let ctxes = update_ctxes Fun ctxes name func_type in
