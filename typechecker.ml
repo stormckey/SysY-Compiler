@@ -11,16 +11,15 @@ open Util
    * and add the current tree into exception if check failed *)
 let rec check1 ctxes (ast : ast) (ty : value_type) : unit =
   try check_exp ctxes ast == ty
-  with TypeMismatchException msg ->
-    raise (TypeMismatchExceptionWithCurTree (msg, ast_to_tree ast))
+  with SemanticError msg ->
+    raise (SemanticErrorWithCurTree (msg, ast_to_tree ast))
 
 (* add context to check and add parent tree into exception*)
 and make_check1 ctxes ast =
   let check1 a b =
     try check1 ctxes a b
-    with TypeMismatchExceptionWithCurTree (msg, tree) ->
-      raise
-        (TypeMismatchExceptionWithCurTreeParentTree (msg, tree, ast_to_tree ast))
+    with SemanticErrorWithCurTree (msg, tree) ->
+      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
   in
   check1
 
@@ -42,19 +41,20 @@ and check_exp ctxes exp : value_type =
   | UnaryOp (_, unary_exp) ->
       check1 unary_exp IntType;
       IntType
-  | Call (name, args) -> (
-      match lookup (fst ctxes) name with
-      | None -> failwith (sp "function:%s is not defined" name)
+  | Call (id, args) -> (
+      match lookup (fst ctxes) id with
+      | None -> raise (SemanticError (sp "function:%s is not defined" id))
       | Some (FuncType (return_type, paras)) ->
           zip args paras |> List.iter ~f:(fun (arg, para) -> check1 arg para);
           return_type
-      | _ -> failwith (sp "try to call on non-function: %s" name))
+      | _ -> raise (SemanticError (sp "try to call on non-function: %s" id)))
   | Exp exp -> check_exp ctxes exp
   | Lval (id, idxes) -> (
       match lookup (snd ctxes) id with
       | None -> id_not_found_error id
       | Some IntType ->
-          if list_nonempty idxes then failwith "can not index over an int:%s";
+          if list_nonempty idxes then
+            raise (SemanticError (sp "can not index over an int:%s" id));
           IntType
       | Some (ArrayType dims) ->
           if list_empty idxes then ArrayType dims
@@ -64,9 +64,9 @@ and check_exp ctxes exp : value_type =
             let l_idxes = List.length idxes in
             if l_dims = l_idxes - 1 then IntType
             else if l_dims < l_idxes - 1 then
-              failwith "the dimension of indexes is too much"
+              raise (SemanticError "the dimension of indexes is too much")
             else ArrayType (drop_head_n dims l_idxes))
-      | _ -> failwith "the lval must be of either int or array")
+      | _ -> raise (SemanticError "the lval must be of either int or array"))
   | Number _ -> IntType
 
 (* take an ast, ctxes, return the updated ctxes *)
@@ -144,12 +144,16 @@ let typecheck ctxes ast : unit =
     print_endline ""
   in
   ignore
-    (try typecheck_exn ctxes program
-     with TypeMismatchExceptionWithCurTreeParentTree (msg, tree1, tree2) ->
-       print_endline msg;
-       pt tree1;
-       print_endline "-----------------in--------------------";
-       pt tree2;
-       exit 1)
+    (try typecheck_exn ctxes program with
+    | SemanticErrorWithCurTreeParentTree (msg, tree1, tree2) ->
+        print_endline msg;
+        pt tree1;
+        print_endline "-----------------in--------------------";
+        pt tree2;
+        exit 1
+    | SemanticErrorWithCurTree (msg, tree) ->
+        print_endline msg;
+        pt tree;
+        exit 1)
 
 [@@@warning "+8"]
