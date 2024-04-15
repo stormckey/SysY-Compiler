@@ -95,6 +95,16 @@ let rec update_ctxes ctxes ast : ctxes =
       new_ctxes
   | _ -> ctxes
 
+(*typecheck function body, return unit*)
+and typecheck_body ctxes body return_type : unit =
+  ignore
+    (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
+         match block_item with
+         | Decl _ as decl -> update_ctxes ctxes decl
+         | Stmt stmt ->
+             check_stmt ctxes stmt return_type;
+             ctxes))
+
 (* type check stmt, return unit *)
 and check_stmt ctxes stmt return_type =
   let check1 = make_check1 ctxes stmt in
@@ -120,16 +130,6 @@ and check_stmt ctxes stmt return_type =
       | None -> return_type == VoidType
       | Some exp -> check1 exp return_type)
   | Exp exp -> ignore (check_exp ctxes exp)
-
-(*typecheck function body, return unit*)
-and typecheck_body ctxes body return_type : unit =
-  ignore
-    (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
-         match block_item with
-         | Decl _ as decl -> update_ctxes ctxes decl
-         | Stmt stmt ->
-             check_stmt ctxes stmt return_type;
-             ctxes))
 
 (* the clean entry for typechecking*)
 let typecheck_exn ctxes program =
