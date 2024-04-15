@@ -48,18 +48,14 @@ let rec ast_to_tree = function
   | Decl decl -> t "Int" (ast_list_to_tree_list decl)
   | Assign (lval, exp) -> t "Assign" [ ast_to_tree lval; ast_to_tree exp ]
   | Block block -> t "Block" (ast_list_to_tree_list block)
-  | If (guard, then_, else_) -> (
-      match else_ with
-      | None -> t "If" [ ast_to_tree guard; ast_to_tree then_ ]
-      | Some else_ ->
-          t "If" [ ast_to_tree guard; ast_to_tree then_; ast_to_tree else_ ])
+  | IfElse (guard, then_, else_) ->
+      t "IfElse" [ ast_to_tree guard; ast_to_tree then_; ast_to_tree else_ ]
+  | IfThen (guard, then_) -> t "IfThen" [ ast_to_tree guard; ast_to_tree then_ ]
   | While (guard, stmt) -> t "While" [ ast_to_tree guard; ast_to_tree stmt ]
   | Break -> n "Break"
   | Continue -> n "Continue"
-  | Return exp -> (
-      match exp with
-      | None -> t "Return" []
-      | Some exp -> t "Return" [ ast_to_tree exp ])
+  | Return exp -> t "Return" [ ast_to_tree exp ]
+  | ReturnNone -> t "Return" []
   | FuncDef (func_type, id, func_f_params, block) ->
       t "FuncDef"
         ([ functype_to_tree func_type; n id ]

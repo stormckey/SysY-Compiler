@@ -115,20 +115,19 @@ and check_stmt ctxes stmt return_type =
   | Block block ->
       let new_ctxes = push_new_var_ctx ctxes [] in
       typecheck_body new_ctxes block return_type
-  | If (guard, then_, else_maybe) -> (
+  | IfElse (guard, then_, else_) ->
       check1 guard IntType;
       check_stmt ctxes then_ return_type;
-      match else_maybe with
-      | Some else_ -> check_stmt ctxes else_ return_type
-      | None -> ())
+      check_stmt ctxes else_ return_type
+  | IfThen (guard, then_) ->
+      check1 guard IntType;
+      check_stmt ctxes then_ return_type
   | While (guard, stmt) ->
       check1 guard IntType;
       check_stmt ctxes stmt return_type
   | Break | Continue -> ()
-  | Return exp -> (
-      match exp with
-      | None -> return_type == VoidType
-      | Some exp -> check1 exp return_type)
+  | ReturnNone -> return_type == VoidType
+  | Return exp -> check1 exp return_type
   | Exp exp -> ignore (check_exp ctxes exp)
 
 (* the clean entry for typechecking*)

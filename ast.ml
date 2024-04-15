@@ -17,11 +17,13 @@ type ast =
   | Stmt of ast
   | Exp of ast
   | Assign of ast * ast
-  | If of ast * ast * ast option
+  | IfElse of ast * ast * ast
+  | IfThen of ast * ast
   | While of ast * ast
   | Break
   | Continue
-  | Return of ast option
+  | Return of ast
+  | ReturnNone
   | Lval of string * ast list
   | Call of string * ast list
   | UnaryOp of unary_op * ast

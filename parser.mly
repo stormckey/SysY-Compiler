@@ -99,13 +99,13 @@ stmt:
 | l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
 | e = exp; SEMICOLON {e}
 | b = block {Block b}
-| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt {If (e, s1, Some s2)} 
-| IF; LPARE; e = exp; RPARE; s =stmt; {If (e, s, None)}  %prec THEN
+| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt {IfElse (e, s1, s2)} 
+| IF; LPARE; e = exp; RPARE; s =stmt; {IfThen (e, s)}  %prec THEN
 | WHILE; LPARE; e = exp; RPARE; s = stmt {While (e, s)}
 | BREAK; SEMICOLON {Break}
 | CONTINUE; SEMICOLON {Continue}
-| RETURN; e = exp; SEMICOLON; {Return (Some e)}
-| RETURN; SEMICOLON {Return None}
+| RETURN; e = exp; SEMICOLON; {Return e}
+| RETURN; SEMICOLON {ReturnNone}
 
 exp:
  l = l_or_exp {Exp l}
