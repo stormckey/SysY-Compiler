@@ -10,14 +10,14 @@ open Util
 (* check the type of the first arg
    * and add the current tree into exception if check failed *)
 let rec check1 ctxes (ast : ast) (ty : value_type) : unit =
-  try check_exp_exn ctxes ast == ty
+  try get_exp_exn ctxes ast == ty
   with SemanticError msg ->
     raise (SemanticErrorWithCurTree (msg, ast_to_tree ast))
 
 (* add context to check and add parent tree into exception*)
 
 (* take an exp, return its type *)
-and check_exp ctxes exp : value_type =
+and get_exp ctxes exp : value_type =
   let check1 = check1 ctxes in
   match exp with
   | Or (left_exp, right_exp)
@@ -41,7 +41,7 @@ and check_exp ctxes exp : value_type =
           zip args paras |> List.iter ~f:(fun (arg, para) -> check1 arg para);
           return_type
       | _ -> raise (SemanticError (sp "try to call on non-function: %s" id)))
-  | Exp exp -> check_exp_exn ctxes exp
+  | Exp exp -> get_exp_exn ctxes exp
   | Lval (id, idxes) -> (
       match lookup (snd ctxes) id with
       | None -> id_not_found_error id
@@ -62,8 +62,8 @@ and check_exp ctxes exp : value_type =
       | _ -> raise (SemanticError "the lval must be of either int or array"))
   | Number _ -> IntType
 
-and check_exp_exn ctxes exp =
-  try check_exp ctxes exp with
+and get_exp_exn ctxes exp =
+  try get_exp ctxes exp with
   | SemanticErrorWithCurTree (msg, tree) ->
       raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree exp))
   | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, ast_to_tree exp))
@@ -135,7 +135,7 @@ and check_stmt ctxes stmt return_type =
   | Break | Continue -> ()
   | ReturnNone -> return_type == VoidType
   | Return exp -> check1 exp return_type
-  | Exp exp -> ignore (check_exp_exn ctxes exp)
+  | Exp exp -> ignore (get_exp_exn ctxes exp)
 
 and check_stmt_exn ctxes stmt return_type =
   try check_stmt ctxes stmt return_type with

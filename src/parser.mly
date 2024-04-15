@@ -99,7 +99,7 @@ stmt:
 | l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
 | e = exp; SEMICOLON {e}
 | b = block {Block b}
-| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 = stmt {IfElse (e, s1, s2)} 
+| IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 =stmt {IfElse (e, s1, s2)} 
 | IF; LPARE; e = exp; RPARE; s =stmt; {IfThen (e, s)}  %prec THEN
 | WHILE; LPARE; e = exp; RPARE; s = stmt {While (e, s)}
 | BREAK; SEMICOLON {Break}
