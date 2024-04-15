@@ -1,7 +1,6 @@
 {
     open Lexing
     open Parser
-    let p x = print_endline x
 }
 
 let digit = ['0'-'9']

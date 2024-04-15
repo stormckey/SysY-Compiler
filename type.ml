@@ -22,4 +22,4 @@ let rec string_of_value_type value_type =
       ^ ")"
 
 let ( == ) a b = equal_value_type a b
-let ( != ) a b = not (a == b)
+let ( <> ) a b = not (a == b)

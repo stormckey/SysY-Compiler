@@ -4,7 +4,7 @@
 (ocamllex lexer)
 
 (executables
- (names lab1 lab2)
+ (names lab1 lab2 test)
  (modes byte exe)
  (libraries core core_unix.command_unix printbox printbox-text)
  (preprocess
