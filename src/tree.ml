@@ -39,14 +39,11 @@ let node_to_string = function
   | CompUnit _ -> "CompUnit"
 
 let rec ast_to_tree = function
-  | Stmt fst | Exp fst -> ast_to_tree fst
-  | Number number -> n (string_of_int number)
+  | Number num -> n (string_of_int num)
   | IntParam id -> t "IntParam" [ n id ]
-  | DefVar (id, exp) -> t "DefVar" [ n id; ast_to_tree exp ]
-  | (DefArr (id, dim) | ArrParam (id, dim)) as node ->
-      t (node_to_string node) (n id :: int_list_to_tree_list dim)
-  | (Lval (id, l) | Call (id, l)) as node ->
-      t (node_to_string node) (n id :: ast_list_to_tree_list l)
+  | Stmt fst | Exp fst -> ast_to_tree fst
+  | Return fst -> t "Return" [ ast_to_tree fst ]
+  | DefVar (id, fst) -> t "DefVar" [ n id; ast_to_tree fst ]
   | ( Add (fst, snd)
     | Sub (fst, snd)
     | Eq (fst, snd)
@@ -57,24 +54,26 @@ let rec ast_to_tree = function
     | Assign (fst, snd)
     | Or (fst, snd) ) as node ->
       t (node_to_string node) (ast_list_to_tree_list [ fst; snd ])
-  | UnaryOp (unary_op, unary_exp) ->
-      t "UnaryOp" [ unaryop_to_tree unary_op; ast_to_tree unary_exp ]
-  | Rel (rel_exp, relop, add_exp) ->
-      t "Rel" [ ast_to_tree rel_exp; relop_to_tree relop; ast_to_tree add_exp ]
-  | Mul (mul_exp, binop, unary_exp) ->
-      t "Mul"
-        [ ast_to_tree mul_exp; binop_to_tree binop; ast_to_tree unary_exp ]
+  | IfElse (fst, snd, trd) ->
+      t "IfElse" (ast_list_to_tree_list [ fst; snd; trd ])
+  | UnaryOp (unary_op, fst) ->
+      t "UnaryOp" [ unaryop_to_tree unary_op; ast_to_tree fst ]
+  | Rel (fst, relop, snd) ->
+      t "Rel" [ ast_to_tree fst; relop_to_tree relop; ast_to_tree snd ]
+  | Mul (fst, binop, snd) ->
+      t "Mul" [ ast_to_tree fst; binop_to_tree binop; ast_to_tree snd ]
+  | (DefArr (id, num_list) | ArrParam (id, num_list)) as node ->
+      t (node_to_string node) (n id :: int_list_to_tree_list num_list)
+  | (Lval (id, l) | Call (id, l)) as node ->
+      t (node_to_string node) (n id :: ast_list_to_tree_list l)
   | (Decl l | CompUnit l | Block l) as node ->
       t (node_to_string node) (ast_list_to_tree_list l)
-  | IfElse (guard, then_, else_) ->
-      t "IfElse" (ast_list_to_tree_list [ guard; then_; else_ ])
   | (Break | Continue | ReturnNone) as node -> n (node_to_string node)
-  | Return exp -> t "Return" [ ast_to_tree exp ]
-  | FuncDef (func_type, id, func_f_params, block) ->
+  | FuncDef (func_type, id, l, fst) ->
       t "FuncDef"
         ([ functype_to_tree func_type; n id ]
-        @ ast_list_to_tree_list func_f_params
-        @ [ ast_to_tree block ])
+        @ ast_list_to_tree_list l
+        @ [ ast_to_tree fst ])
 
 and ast_list_to_tree_list ast_list = List.map ast_list ~f:ast_to_tree
 
