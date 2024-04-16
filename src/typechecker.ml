@@ -7,6 +7,12 @@ open Util
 
 [@@@warning "-8"]
 
+let try_check f tr =
+  try f () with
+  | SemanticErrorWithCurTree (msg, tree) ->
+      raise (SemanticErrorWithCurTreeParentTree (msg, tree, tr))
+  | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, tr))
+
 (* check the type of the first arg
    * and add the current tree into exception if check failed *)
 let rec check1 ctxes (ast : ast) (ty : value_type) : unit =
@@ -63,10 +69,8 @@ and get_exp ctxes exp : value_type =
   | Number _ -> IntType
 
 and get_exp_exn ctxes exp =
-  try get_exp ctxes exp with
-  | SemanticErrorWithCurTree (msg, tree) ->
-      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree exp))
-  | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, ast_to_tree exp))
+  let f () = get_exp ctxes exp in
+  try_check f (ast_to_tree exp)
 
 (* take an ast, ctxes, return the updated ctxes *)
 let rec update_ctxes ctxes ast : ctxes =
@@ -96,10 +100,8 @@ let rec update_ctxes ctxes ast : ctxes =
   | _ -> ctxes
 
 and update_ctxes_exn ctxes ast =
-  try update_ctxes ctxes ast with
-  | SemanticErrorWithCurTree (msg, tree) ->
-      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree ast))
-  | SemanticError msg -> raise (SemanticErrorWithCurTree (msg, ast_to_tree ast))
+  let f () = update_ctxes ctxes ast in
+  try_check f (ast_to_tree ast)
 
 (*typecheck function body, return unit*)
 and typecheck_body ctxes body return_type : unit =
@@ -138,11 +140,8 @@ and check_stmt ctxes stmt return_type =
   | Exp exp -> ignore (get_exp_exn ctxes exp)
 
 and check_stmt_exn ctxes stmt return_type =
-  try check_stmt ctxes stmt return_type with
-  | SemanticErrorWithCurTree (msg, tree) ->
-      raise (SemanticErrorWithCurTreeParentTree (msg, tree, ast_to_tree stmt))
-  | SemanticError msg ->
-      raise (SemanticErrorWithCurTree (msg, ast_to_tree stmt))
+  let f () = check_stmt ctxes stmt return_type in
+  try_check f (ast_to_tree stmt)
 
 (* the clean entry for typechecking*)
 let typecheck_exn ctxes program =
@@ -150,22 +149,25 @@ let typecheck_exn ctxes program =
 
 (* wrapped entry with exception handling*)
 let typecheck ctxes ast : unit =
-  let (CompUnit program) = ast in
-  let pt tree =
-    PrintBox_text.output stdout tree;
-    print_endline ""
+  let handleSemanticError msg tree1 tree2 =
+    print_endline msg;
+    (match (tree1, tree2) with
+    | Some tree1, Some tree2 ->
+        PrintBox_text.output stdout tree1;
+        print_endline "\n-----------------in--------------------\n";
+        PrintBox_text.output stdout tree2
+    | Some tree1, None -> PrintBox_text.output stdout tree1
+    | _ -> ());
+    exit 1
   in
+  let (CompUnit program) = ast in
   ignore
     (try typecheck_exn ctxes program with
     | SemanticErrorWithCurTreeParentTree (msg, tree1, tree2) ->
-        print_endline ("Semantic Error: " ^ msg);
-        pt tree1;
-        print_endline "-----------------in--------------------";
-        pt tree2;
-        exit 1
+        handleSemanticError ("Semantic Error: " ^ msg) (Some tree1) (Some tree2)
     | SemanticErrorWithCurTree (msg, tree) ->
-        print_endline msg;
-        pt tree;
-        exit 1)
+        handleSemanticError msg (Some tree) None
+    | SemanticError msg ->
+        handleSemanticError ("Semantic Error: " ^ msg) None None)
 
 [@@@warning "+8"]

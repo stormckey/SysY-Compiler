@@ -7,9 +7,9 @@ apt install opam
 opam init 
 eval $(opam env --switch=default)
 
-cd <dict>
 #install dependencies
 #make sure compiler.opam is in . 
+cd <dict>
 opam install . --deps-only
 
 #compile

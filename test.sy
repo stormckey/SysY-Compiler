@@ -1,6 +1,6 @@
 // Semantic Error at Line 6: Invalid operands to 'int' and 'int[]'
 
-int main() {
+int main(){
     int a = 1;
     int b[5];
     a * b;
