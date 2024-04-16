@@ -59,7 +59,8 @@ let rec ast_to_tree = function
   | FuncDef (func_type, id, func_f_params, block) ->
       t "FuncDef"
         ([ functype_to_tree func_type; n id ]
-        @ ast_list_to_tree_list (func_f_params @ block))
+        @ ast_list_to_tree_list func_f_params
+        @ [ ast_to_tree block ])
   | CompUnit comp_unit -> t "CompUnit" (ast_list_to_tree_list comp_unit)
 
 and ast_list_to_tree_list ast_list = List.map ast_list ~f:ast_to_tree

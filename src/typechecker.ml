@@ -105,6 +105,7 @@ and update_ctxes_exn ctxes ast =
 
 (*typecheck function body, return unit*)
 and typecheck_body ctxes body return_type : unit =
+  let (Block body) = body in
   ignore
     (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
          match block_item with
@@ -121,7 +122,7 @@ and check_stmt ctxes stmt return_type =
   | Assign (lval, exp) ->
       check1 lval IntType;
       check1 exp IntType
-  | Block block ->
+  | Block _ as block ->
       let new_ctxes = push_new_var_ctx ctxes [] in
       typecheck_body new_ctxes block return_type
   | IfElse (guard, then_, else_) ->

@@ -88,7 +88,7 @@ bracket_int:
  LBRACK; i = INT_CONST; RBRACK;{ i}
 
 block:
-| LBRACE; l = block_list; RBRACE; {l}
+| LBRACE; l = block_list; RBRACE; {Block l}
 
 block_list:
 | (* empty *) {[ ]}
@@ -98,7 +98,7 @@ block_list:
 stmt:
 | l = lval; ASSIGN; e = exp; SEMICOLON {Assign (l, e)}
 | e = exp; SEMICOLON {e}
-| b = block {Block b}
+| b = block {b}
 | IF; LPARE; e = exp; RPARE; s1 =stmt; ELSE; s2 =stmt {IfElse (e, s1, s2)} 
 | IF; LPARE; e = exp; RPARE; s =stmt; {IfThen (e, s)}  %prec THEN
 | WHILE; LPARE; e = exp; RPARE; s = stmt {While (e, s)}
