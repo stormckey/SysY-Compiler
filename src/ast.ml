@@ -8,13 +8,13 @@ type ast =
   | Number of int
   | Decl of ast list (* DefVar | DefArr list *)
   | CompUnit of ast list (* FuncDef | Decl list *)
-  | DefVar of string * ast (* IntParam | ArrParam *)
+  | DefVar of string * ast (* Exp *)
   | DefArr of string * int list
   | FuncDef of
       value_type
       * string
       * ast list
-      * ast (* IntParam | ArrParam list * block *)
+      * ast (* IntParam | ArrParam list * Block *)
   | IntParam of string
   | ArrParam of string * int list
   | Block of ast list (* Decl | Stmt list*)
