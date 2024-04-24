@@ -1,0 +1,9 @@
+(menhir
+ (modules parser))
+
+(ocamllex lexer)
+
+(library
+ (name sysy_parser)
+ (modules parser lexer)
+ (libraries lib core))

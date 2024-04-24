@@ -1,4 +1,3 @@
-**/_build/
+src/_build/
 .ocamlformat
 .vscode/
-readme.md

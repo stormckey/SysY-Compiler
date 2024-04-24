@@ -1,0 +1,23 @@
+opam-version: "2.0"
+name: "compiler"
+version: "0.1.0"
+synopsis: "compiler for SysY"
+description: """
+compiler for SysY
+"""
+maintainer: "3210106354@zju.edu.cn"
+authors: ["Chenhao Gao"]
+license: "MIT"
+depends: [
+  "ocaml" {>= "4.13.0"}
+  "dune" {= "3.14.2"}
+  "core"
+  "core_unix"
+  "menhir"
+  "printbox"
+  "printbox-text"
+  "ppx_jane"
+]
+build: [
+  ["dune" "build" "@install" "-p" name]
+]

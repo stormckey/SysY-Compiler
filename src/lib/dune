@@ -1,0 +1,5 @@
+(library
+ (name lib)
+ (libraries core printbox printbox-text)
+ (preprocess
+  (pps ppx_jane)))
