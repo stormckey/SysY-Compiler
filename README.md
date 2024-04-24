@@ -1,18 +1,22 @@
-# Environment
+# Compiler for SysY
 
-Tested on docker image debian:latest and ocaml/opam:latest, the latter is recommended where opam is immediately available.
+The course project for Compiler Principles in Zhejiang University.
+
+Currently only a parser and typechecker is completed.
+
+[Here](https://accsys.pages.zjusct.io/accipit/appendix/sysy-spec/) is the specification for SysY(in Chinese).
+
+## Usage
+
+To run the compiler, you first need to have opam installed. You can also use docker image ocaml/opam:latest.
+
+Then run the following commands:
+
 ```bash
-#debian:latest only
-apt install opam
-opam init 
-eval $(opam env --switch=default)
-
 #install dependencies
-#make sure compiler.opam is in . 
-cd <dict>
 opam install . --deps-only
 
-#compile
+#compile it
 dune build
 
 #Done, the executables are under _build/default/src/lab1.exe and _build/default/src/lab2.exe
