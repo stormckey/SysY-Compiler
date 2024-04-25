@@ -28,12 +28,7 @@ dune build
 #Done, the executables are under src/_build/default/bin/lab1.exe and src/_build/default/bin/lab2.exe
 ```
 
-To run the executable, just type `./lab1.exe <input.sy>`, `./lab2.exe <input.sy>` when executables are in . or run `dune exec -- bin/lab1.exe <input.sy>`. If `<input.sy>` is left blank, `test.sy` will be the default.
-Also, you can run from dune
-
-```bash
-dune exec lab1 <input.sy>
-```
+To run the executable, just type `./lab1.exe <input.sy>`, `./lab2.exe <input.sy>` when executables are in . or run `dune exec lab1 <input.sy>`. If `<input.sy>` is left blank, `test.sy` will be the default.
 
 Other Information
 
