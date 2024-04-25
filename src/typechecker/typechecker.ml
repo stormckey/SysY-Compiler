@@ -39,17 +39,13 @@ and get_exp ctxes exp : value_type =
   | UnaryOp (_, unary_exp) ->
       check1_exn unary_exp IntType;
       IntType
-  | Call (id, args) -> (
-      match lookup (fst ctxes) id with
-      | None -> raise (SemanticError (sp "function:%s is not defined" id))
-      | Some (FuncType (return_type, paras)) ->
-          zip args paras
-          |> List.iter ~f:(fun (arg, para) -> check1_exn arg para);
-          return_type
-      | _ -> raise (SemanticError (sp "try to call on non-function: %s" id)))
+  | Call (id, args) ->
+      let (FuncType (return_type, paras)) = lookup_function ctxes id in
+      zip args paras |> List.iter ~f:(fun (arg, para) -> check1_exn arg para);
+      return_type
   | Exp exp -> get_exp_exn ctxes exp
   | Lval (id, idxes) -> (
-      match lookup (snd ctxes) id with
+      match lookup ctxes.var_ctx id with
       | None -> id_not_found_error id
       | Some IntType ->
           if list_nonempty idxes then
@@ -75,14 +71,15 @@ and get_exp_exn ctxes exp =
 (* take an ast, ctxes, return the updated ctxes *)
 let rec update_ctxes ctxes ast : ctxes =
   let check1_exn = check1_exn ctxes in
-  let set_ctxes = set_ctxes ctxes in
+  let update_var_ctx = update_var_ctx ctxes in
+  let update_fun_ctx = update_fun_ctx ctxes in
   match ast with
   | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes_exn
   | DefVar (id, exp) ->
       check1_exn exp IntType;
-      set_ctxes Var id IntType
-  | DefArr (id, []) -> set_ctxes Var id IntType
-  | DefArr (id, dims) -> set_ctxes Var id (ArrayType (drop_head_n dims 1))
+      update_var_ctx id IntType
+  | DefArr (id, []) -> update_var_ctx id IntType
+  | DefArr (id, dims) -> update_var_ctx id (ArrayType (drop_head_n dims 1))
   | FuncDef (return_type, id, paras, block) ->
       let to_vars_and_params param (vars_acc, types_acc) =
         match param with
@@ -94,7 +91,7 @@ let rec update_ctxes ctxes ast : ctxes =
         List.fold_right paras ~init:([], []) ~f:to_vars_and_params
       in
       let func_type = FuncType (return_type, param_types) in
-      let ctxes = set_ctxes Fun id func_type in
+      let ctxes = update_fun_ctx id func_type in
       typecheck_body ctxes block return_type new_vars;
       ctxes
   | _ -> ctxes
@@ -148,7 +145,8 @@ let typecheck_exn ctxes program =
   List.fold_left program ~init:ctxes ~f:update_ctxes_exn
 
 (* wrapped entry with exception handling*)
-let typecheck ctxes ast : unit =
+let typecheck ast : unit =
+  let ctxes = { fun_ctx = [ Map.Poly.empty ]; var_ctx = [ Map.Poly.empty ] } in
   let handleSemanticError msg tree1 tree2 =
     print_endline ("Semantic Error: " ^ msg);
     Option.iter tree1 ~f:(fun tree1 -> PrintBox_text.output stdout tree1);

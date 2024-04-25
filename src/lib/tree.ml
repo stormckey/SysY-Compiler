@@ -2,8 +2,8 @@ open Core
 open Ast
 open Type
 
-let t str list = PrintBox.tree (PrintBox.text str) list
-let n str = t str []
+let t str list = PrintBox.tree (PrintBox.text str) list (*tree*)
+let n str = t str [] (*node/leaf*)
 let unaryop_to_tree = function Pos -> n "+" | Neg -> n "-" | Not -> n "!"
 let binop_to_tree = function Div -> n "/" | Mul -> n "*" | Rem -> n "%"
 
