@@ -13,6 +13,11 @@ To run the compiler, you first need to have opam installed. You can also use doc
 Then run the following commands:
 
 ```bash
+#[optional] create a new sandbox
+opam switch create sysy ocaml-base-compiler.5.1.1
+opam switch set sysy
+eval $(opam env)
+
 #install dependencies
 cd src
 opam install . --deps-only
@@ -24,11 +29,17 @@ dune build
 ```
 
 To run the executable, just type `./lab1.exe <input.sy>`, `./lab2.exe <input.sy>` when executables are in . or run `dune exec -- bin/lab1.exe <input.sy>`. If `<input.sy>` is left blank, `test.sy` will be the default.
+Also, you can run from dune
+
+```bash
+dune exec lab1 <input.sy>
+```
 
 Other Information
+
 ```
-opam --version              
-2.0.10
-ocaml --version 
+opam --version
+2.1.5
+ocaml --version
 The OCaml toplevel, version 5.1.1
 ```
