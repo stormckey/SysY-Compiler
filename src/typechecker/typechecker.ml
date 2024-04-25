@@ -84,13 +84,14 @@ let rec update_ctxes ctxes ast : ctxes =
   | DefArr (id, []) -> set_ctxes Var id IntType
   | DefArr (id, dims) -> set_ctxes Var id (ArrayType (drop_head_n dims 1))
   | FuncDef (return_type, id, paras, block) ->
+      let to_vars_and_params param (vars_acc, types_acc) =
+        match param with
+        | IntParam id -> ((id, IntType) :: vars_acc, IntType :: types_acc)
+        | ArrParam (id, dims) ->
+            ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc)
+      in
       let new_vars, param_types =
-        List.fold_right paras ~init:([], [])
-          ~f:(fun param (vars_acc, types_acc) ->
-            match param with
-            | IntParam id -> ((id, IntType) :: vars_acc, IntType :: types_acc)
-            | ArrParam (id, dims) ->
-                ((id, ArrayType dims) :: vars_acc, ArrayType dims :: types_acc))
+        List.fold_right paras ~init:([], []) ~f:to_vars_and_params
       in
       let func_type = FuncType (return_type, param_types) in
       let ctxes = set_ctxes Fun id func_type in
@@ -105,13 +106,14 @@ and update_ctxes_exn ctxes ast =
 (*typecheck function body, return unit*)
 and typecheck_body ctxes (Block body) return_type init_table : unit =
   let ctxes = push_new_var_ctx ctxes init_table in
-  ignore
-    (List.fold_left body ~init:ctxes ~f:(fun ctxes block_item ->
-         match block_item with
-         | Decl _ as decl -> update_ctxes_exn ctxes decl
-         | Stmt stmt ->
-             check_stmt_exn ctxes stmt return_type;
-             ctxes))
+  let update_block_item ctxes block_item =
+    match block_item with
+    | Decl _ as decl -> update_ctxes_exn ctxes decl
+    | Stmt stmt ->
+        check_stmt_exn ctxes stmt return_type;
+        ctxes
+  in
+  ignore (List.fold_left body ~init:ctxes ~f:update_block_item)
 
 (* type check stmt, return unit *)
 and check_stmt ctxes stmt return_type =
