@@ -1,5 +1,6 @@
 (executables
  (names lab1 lab2)
+ (public_names lab1 lab2)
  (modes byte exe)
  (libraries core core_unix.command_unix lib sysy_parser type_checker)
  (preprocess
