@@ -8,8 +8,7 @@ type table = (string, value_type) Map.Poly.t
 type ctx = table list
 type ctxes = { fun_ctx : ctx; var_ctx : ctx } (* func_ctx, var_ctx*)
 
-let init_ctxes () =
-  { fun_ctx = [ Map.Poly.empty ]; var_ctx = [ Map.Poly.empty ] }
+let init_ctxes = { fun_ctx = [ Map.Poly.empty ]; var_ctx = [ Map.Poly.empty ] }
 
 let lookup (ctx : ctx) (id : string) : value_type option =
   List.find_map ctx ~f:(fun scope -> Map.Poly.find scope id)

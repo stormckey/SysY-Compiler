@@ -2,8 +2,6 @@ open Lib.Err
 
 let sp = Printf.sprintf
 let pe = print_endline
-let list_empty l = List.length l = 0
-let list_nonempty l = not (list_empty l)
 
 let zip l1 l2 =
   let rec aux l1 l2 acc =

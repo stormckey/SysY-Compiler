@@ -6,16 +6,14 @@ open Lib.Tree
 open Table
 open Util
 
-(* check the type of the first arg
-   * and add the current tree into exception if check failed *)
+(* get the type of the first arg and compare it to the second one
+ * add the current tree into exception if check failed *)
 let rec check_type_exn ctxes (ast : exp) (ty : value_type) : unit =
-  let f () = get_exp_exn ctxes ast == ty in
+  let f () = get_exp_type_exn ctxes ast == ty in
   catch_raise_with_ast f (exp_to_tree ast)
 
-(* add context to check and add parent tree into exception*)
-
 (* take an exp, return its type *)
-and get_exp ctxes exp : value_type =
+and get_exp_type ctxes exp : value_type =
   let check_type_exn = check_type_exn ctxes in
   match exp with
   | Or (left_exp, right_exp)
@@ -38,15 +36,15 @@ and get_exp ctxes exp : value_type =
       |> List.iter ~f:(fun (arg, para) -> check_type_exn arg para);
       return_type
   | Lval (id, idxes) -> (
+      let l_idxes = List.length idxes in
       match lookup_var ctxes id with
       | IntType ->
-          if list_nonempty idxes then
+          if l_idxes <> 0 then
             raise_semantic_error (sp "can not index over an int:%s" id);
           IntType
       | ArrayType dims ->
-          List.iter idxes ~f:(fun dim -> check_type_exn dim IntType);
           let l_dims = List.length dims in
-          let l_idxes = List.length idxes in
+          List.iter idxes ~f:(fun dim -> check_type_exn dim IntType);
           if l_idxes = 0 then ArrayType dims
           else if l_dims = l_idxes - 1 then IntType
           else if l_dims > l_idxes - 1 then ArrayType (drop_head_n dims l_idxes)
@@ -54,16 +52,16 @@ and get_exp ctxes exp : value_type =
       | _ -> raise_semantic_error "the lval must be of either int or array")
   | Number _ -> IntType
 
-and get_exp_exn ctxes exp =
-  let f () = get_exp ctxes exp in
+and get_exp_type_exn ctxes exp =
+  let f () = get_exp_type ctxes exp in
   catch_raise_with_ast f (exp_to_tree exp)
 
 (* take an ast, ctxes, return the updated ctxes *)
-let rec update_ctxes_decl ctxes (decl : decl) : ctxes =
+let rec ctxes_after_decl ctxes (decl : decl) : ctxes =
   let update_fun_ctx = update_fun_ctx ctxes in
   match decl with
   | DefVar def_var_list ->
-      List.fold_left def_var_list ~init:ctxes ~f:update_ctxes_var
+      List.fold_left def_var_list ~init:ctxes ~f:ctxes_after_var_exn
   | DefFunc (return_type, id, params, block) ->
       let params_to_types = function
         | IntParam _ -> IntType
@@ -79,7 +77,11 @@ let rec update_ctxes_decl ctxes (decl : decl) : ctxes =
       typecheck_block_exn ctxes block return_type new_vars;
       ctxes
 
-and update_ctxes_var ctxes (def_var : decl_var) =
+and ctxes_after_decl_exn ctxes (decl : decl) =
+  let f () = ctxes_after_decl ctxes decl in
+  catch_raise_with_ast f (decl_to_tree decl)
+
+and ctxes_after_var ctxes (def_var : decl_var) =
   let check_type_exn = check_type_exn ctxes in
   let update_var_ctx = update_var_ctx ctxes in
   match def_var with
@@ -89,15 +91,15 @@ and update_ctxes_var ctxes (def_var : decl_var) =
   | DefArr (id, []) -> update_var_ctx id IntType
   | DefArr (id, dims) -> update_var_ctx id (ArrayType (drop_head_n dims 1))
 
-and update_ctxes_decl_exn ctxes (decl : decl) =
-  let f () = update_ctxes_decl ctxes decl in
-  catch_raise_with_ast f (decl_to_tree decl)
+and ctxes_after_var_exn ctxes (def_var : decl_var) =
+  let f () = ctxes_after_var ctxes def_var in
+  catch_raise_with_ast f (decl_var_to_tree def_var)
 
 (*typecheck function body, return unit*)
 and typecheck_block ctxes (body : block) return_type init_table : unit =
   let ctxes = push_new_var_ctx ctxes init_table in
   let update_block_item ctxes = function
-    | BlockDecl decl -> update_ctxes_decl_exn ctxes decl
+    | BlockDecl decl -> ctxes_after_decl_exn ctxes decl
     | BlockStmt stmt ->
         check_stmt_exn ctxes stmt return_type;
         ctxes
@@ -130,7 +132,7 @@ and check_stmt ctxes stmt return_type =
   | Break | Continue -> ()
   | ReturnNone -> return_type == VoidType
   | Return exp -> check_type_exn exp return_type
-  | Exp exp -> ignore (get_exp_exn ctxes exp)
+  | Exp exp -> ignore (get_exp_type_exn ctxes exp)
 
 and check_stmt_exn ctxes (stmt : stmt) return_type =
   let f () = check_stmt ctxes stmt return_type in
@@ -138,10 +140,9 @@ and check_stmt_exn ctxes (stmt : stmt) return_type =
 
 (* the clean entry for typechecking*)
 let typecheck_exn (ctxes : ctxes) (program : decl list) =
-  List.fold_left program ~init:ctxes ~f:update_ctxes_decl_exn
+  List.fold_left program ~init:ctxes ~f:ctxes_after_decl_exn
 
 (* wrapped entry with exception handling*)
 let typecheck (program : decl list) : unit =
-  let ctxes = init_ctxes () in
-  let f () = typecheck_exn ctxes program in
+  let f () = typecheck_exn init_ctxes program in
   ignore (handleSemanticError f)
