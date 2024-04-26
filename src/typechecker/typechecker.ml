@@ -6,13 +6,11 @@ open Lib.Tree
 open Table
 open Util
 
-[@@@warning "-8"]
-
 (* check the type of the first arg
    * and add the current tree into exception if check failed *)
-let rec check_type_exn ctxes (ast : ast) (ty : value_type) : unit =
+let rec check_type_exn ctxes (ast : exp) (ty : value_type) : unit =
   let f () = get_exp_exn ctxes ast == ty in
-  catch_raise_with_ast f (ast_to_tree ast)
+  catch_raise_with_ast f (exp_to_tree ast)
 
 (* add context to check and add parent tree into exception*)
 
@@ -39,7 +37,6 @@ and get_exp ctxes exp : value_type =
       zip args paras
       |> List.iter ~f:(fun (arg, para) -> check_type_exn arg para);
       return_type
-  | Exp exp -> get_exp_exn ctxes exp
   | Lval (id, idxes) -> (
       match lookup_var ctxes id with
       | IntType ->
@@ -59,21 +56,15 @@ and get_exp ctxes exp : value_type =
 
 and get_exp_exn ctxes exp =
   let f () = get_exp ctxes exp in
-  catch_raise_with_ast f (ast_to_tree exp)
+  catch_raise_with_ast f (exp_to_tree exp)
 
 (* take an ast, ctxes, return the updated ctxes *)
-let rec update_ctxes ctxes ast : ctxes =
-  let check_type_exn = check_type_exn ctxes in
-  let update_var_ctx = update_var_ctx ctxes in
+let rec update_ctxes_decl ctxes (decl : decl) : ctxes =
   let update_fun_ctx = update_fun_ctx ctxes in
-  match ast with
-  | Decl def_list -> List.fold_left def_list ~init:ctxes ~f:update_ctxes_exn
-  | DefVar (id, exp) ->
-      check_type_exn exp IntType;
-      update_var_ctx id IntType
-  | DefArr (id, []) -> update_var_ctx id IntType
-  | DefArr (id, dims) -> update_var_ctx id (ArrayType (drop_head_n dims 1))
-  | FuncDef (return_type, id, params, block) ->
+  match decl with
+  | DefVar def_var_list ->
+      List.fold_left def_var_list ~init:ctxes ~f:update_ctxes_var
+  | DefFunc (return_type, id, params, block) ->
       let params_to_types = function
         | IntParam _ -> IntType
         | ArrParam (_, dims) -> ArrayType dims
@@ -87,26 +78,35 @@ let rec update_ctxes ctxes ast : ctxes =
       let new_vars = List.map params ~f:params_to_vars in
       typecheck_block_exn ctxes block return_type new_vars;
       ctxes
-  | _ -> ctxes
 
-and update_ctxes_exn ctxes ast =
-  let f () = update_ctxes ctxes ast in
-  catch_raise_with_ast f (ast_to_tree ast)
+and update_ctxes_var ctxes (def_var : decl_var) =
+  let check_type_exn = check_type_exn ctxes in
+  let update_var_ctx = update_var_ctx ctxes in
+  match def_var with
+  | DefInt (id, exp) ->
+      check_type_exn exp IntType;
+      update_var_ctx id IntType
+  | DefArr (id, []) -> update_var_ctx id IntType
+  | DefArr (id, dims) -> update_var_ctx id (ArrayType (drop_head_n dims 1))
+
+and update_ctxes_decl_exn ctxes (decl : decl) =
+  let f () = update_ctxes_decl ctxes decl in
+  catch_raise_with_ast f (decl_to_tree decl)
 
 (*typecheck function body, return unit*)
-and typecheck_block ctxes (Block body) return_type init_table : unit =
+and typecheck_block ctxes (body : block) return_type init_table : unit =
   let ctxes = push_new_var_ctx ctxes init_table in
   let update_block_item ctxes = function
-    | Decl _ as decl -> update_ctxes_exn ctxes decl
-    | Stmt stmt ->
+    | BlockDecl decl -> update_ctxes_decl_exn ctxes decl
+    | BlockStmt stmt ->
         check_stmt_exn ctxes stmt return_type;
         ctxes
   in
   ignore (List.fold_left body ~init:ctxes ~f:update_block_item)
 
-and typecheck_block_exn ctxes block return_type init_table =
+and typecheck_block_exn ctxes (block : block) return_type init_table =
   let f () = typecheck_block ctxes block return_type init_table in
-  catch_raise_with_ast f (ast_to_tree block)
+  catch_raise_with_ast f (block_to_tree block)
 
 (* type check stmt, return unit *)
 and check_stmt ctxes stmt return_type =
@@ -116,7 +116,7 @@ and check_stmt ctxes stmt return_type =
   | Assign (lval, exp) ->
       check_type_exn lval IntType;
       check_type_exn exp IntType
-  | Block _ as block -> typecheck_block_exn ctxes block return_type []
+  | Block block -> typecheck_block_exn ctxes block return_type []
   | IfElse (guard, then_, else_) ->
       check_type_exn guard IntType;
       check_stmt_exn then_ return_type;
@@ -132,19 +132,16 @@ and check_stmt ctxes stmt return_type =
   | Return exp -> check_type_exn exp return_type
   | Exp exp -> ignore (get_exp_exn ctxes exp)
 
-and check_stmt_exn ctxes stmt return_type =
+and check_stmt_exn ctxes (stmt : stmt) return_type =
   let f () = check_stmt ctxes stmt return_type in
-  catch_raise_with_ast f (ast_to_tree stmt)
+  catch_raise_with_ast f (stmt_to_tree stmt)
 
 (* the clean entry for typechecking*)
-let typecheck_exn ctxes program =
-  List.fold_left program ~init:ctxes ~f:update_ctxes_exn
+let typecheck_exn (ctxes : ctxes) (program : decl list) =
+  List.fold_left program ~init:ctxes ~f:update_ctxes_decl_exn
 
 (* wrapped entry with exception handling*)
-let typecheck ast : unit =
+let typecheck (program : decl list) : unit =
   let ctxes = init_ctxes () in
-  let (CompUnit program) = ast in
   let f () = typecheck_exn ctxes program in
   ignore (handleSemanticError f)
-
-[@@@warning "+8"]
