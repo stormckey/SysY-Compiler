@@ -1,8 +1,5 @@
 open Core
-
-exception SemanticError of string
-exception SemanticErrorWithCurTree of string * PrintBox.t
-exception SemanticErrorWithCurTreeParentTree of string * PrintBox.t * PrintBox.t
+open Err
 
 type value_type =
   | IntType
@@ -28,10 +25,6 @@ let rec value_type_to_string value_type =
 let ( == ) a b =
   if equal_value_type a b then ()
   else
-    raise
-      (SemanticError
-         (Printf.sprintf "type %s is incompatible with %s."
-            (value_type_to_string a) (value_type_to_string b)))
-
-let id_not_found_error id =
-  raise (SemanticError (Printf.sprintf "id:%s is not defined" id))
+    raise_semantic_error
+      (Printf.sprintf "type %s is incompatible with %s."
+         (value_type_to_string a) (value_type_to_string b))
